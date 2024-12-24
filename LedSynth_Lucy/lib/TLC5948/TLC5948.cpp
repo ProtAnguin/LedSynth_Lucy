@@ -359,16 +359,16 @@ void TLC5948::setChannel(uint8_t setCh, uint8_t setDr, uint16_t setPWM, uint8_t 
   setDr  = constrain( setDr, 0, nTLCs-1);
   setPWM = constrain(setPWM, _PWM_MIN_VAL, _PWM_MAX_VAL);
   setDC  = constrain( setDC,  _DC_MIN_VAL,  _DC_MAX_VAL);
-  setBC  = constrain( setBC,  _BC_MIN_VAL,  _BC_MIN_VAL);
+  setBC  = constrain( setBC,  _BC_MIN_VAL,  _BC_MAX_VAL);
 
   // Set values
   cpwm[setCh + setDr * nch] = setPWM;
    cDC[setCh + setDr * nch] = setDC;
    cBC[        setDr      ] = setBC;
   
-  // report
-  Serial.printf("Ch:%2d Dr:%2d PWM:%5d DC:%3d BC:%3d\n", setCh, setDr, setPWM, setDC, setDC);
-
   // Send values to TLC
   update();
+  
+  // report
+  Serial.printf("Ch:%2d Dr:%2d PWM:%5d DC:%3d BC:%3d\n", setCh, setDr, setPWM, setDC, setBC);
 }

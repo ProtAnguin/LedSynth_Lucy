@@ -73,8 +73,8 @@ class TLC5948 {
     int _bw                     = 257; // width of bits per driver
     uint _totnch;
     
-    uint32_t _PWM_MIN_VAL = 0;
-    uint32_t _PWM_MAX_VAL = MAX_PWM;
+    uint16_t _PWM_MIN_VAL = 0;
+    uint16_t _PWM_MAX_VAL = MAX_PWM;
     uint8_t   _DC_MIN_VAL = 0;
     uint8_t   _DC_MAX_VAL = MAX_DC;
     uint8_t   _BC_MIN_VAL = 0;
