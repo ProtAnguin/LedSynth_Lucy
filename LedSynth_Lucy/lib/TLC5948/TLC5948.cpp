@@ -263,6 +263,14 @@ String TLC5948::int16toStr(uint16_t var) {
   return strOut;
 }
 
+String TLC5948::int32toStr(uint32_t var) {
+  String strOut = "";
+  for (int i = 31; i >= 0; i--)  {
+    strOut += ((var >> i) & 1) == 1 ? "1" : "0";
+  }
+  return strOut;
+}
+
 void TLC5948::set(uint8_t LEDn, uint32_t setValue, String setWhat) {
   // use mask and populate --> cpwm cDC and cBC
 
@@ -297,6 +305,48 @@ void TLC5948::set(uint8_t LEDn, uint32_t setValue, String setWhat) {
   } else if (strcmp(setWhatCStr, "B") == 0) {
     cBC[tDRI] = constrain(setValue,  _BC_MIN_VAL,  _BC_MAX_VAL); // update Brightness Control value
   }
+}
+
+void TLC5948::setLog(uint8_t LEDn, float logi) {
+  // use logi2pwm to get values
+  // update values in cpwm, cDC and cBC acording to mask
+
+  int tDRI; // temp driver value
+  uint32_t tMASK; // temp mask value
+
+  tMASK = mask[LEDn];
+  tDRI  = tMASK >> 16; // take the upper bits for driver
+
+  uint8_t in_nCh = getNchFromMask(tMASK);
+
+  TLC5948::LogiResults out = logi2pwm(logi, in_nCh);
+
+  /*
+  struct LogiResults {
+      uint16_t pwm;
+      uint8_t dc;
+      uint8_t nch;
+      uint8_t mode;
+    };
+  */
+  uint8_t cActiveCh = 0;
+  for (int i = 0; i < nch; i++) {
+    if ((tMASK >> i) & 1) { // if bit in mask is 1
+      // do magic
+      cActiveCh++; // increase counter for cur channel
+      if (cActiveCh <= out.nch) {
+        cpwm[i + tDRI * nch] = _PWM_MAX_VAL;
+         cDC[i + tDRI * nch] = _DC_MAX_VAL;
+      } else if (cActiveCh == (out.nch+1)){
+        cpwm[i + tDRI * nch] = out.pwm;
+         cDC[i + tDRI * nch] = out.dc;
+      } else {
+        cpwm[i + tDRI * nch] = 0;
+         cDC[i + tDRI * nch] = 0;
+      }
+    }
+  }
+  cBC[tDRI] = _BC_MAX_VAL;
 };
 
 void TLC5948::printCPWM() {
@@ -372,3 +422,109 @@ void TLC5948::setChannel(uint8_t setCh, uint8_t setDr, uint16_t setPWM, uint8_t 
   // report
   Serial.printf("Ch:%2d Dr:%2d PWM:%5d DC:%3d BC:%3d\n", setCh, setDr, setPWM, setDC, setBC);
 }
+
+TLC5948::LogiResults TLC5948::logi2pwm(float logi, uint8_t nch_in) {
+  LogiResults out = {0, 0, 0, 0};
+
+  if (nch_in < 1 || nch_in > nch) return out;
+  if (logi > _MINLOGI) return out; // fast break, logi is beyond minimal sensible value
+
+
+  float pwmfloat = pow(10.0, -logi) * nch_in;
+  float pwmfloor = floor(pwmfloat);
+  float pwmfract = pwmfloat - pwmfloor;
+
+  int32_t pwmlog2 = pwmfract > 0 ? floor(-log2(pwmfract)) : -1;
+
+  uint8_t out_nchon = 0;
+  uint8_t    out_dc = 0;
+  uint8_t  out_mode = 0;
+  uint32_t  out_pwm = 0;
+
+  if (logi <= 0) { // if max output is selected
+    out_nchon = nch_in;
+       out_dc = _DC_MAX_VAL;
+      out_pwm = 0;
+     out_mode = 10;
+  } else if (pwmlog2 <= _BITBOUNDARY1) {
+    out_nchon = pwmfloor;
+       out_dc = _DC_MAX_VAL;
+      out_pwm = (uint32_t)(round(pwmfract * _PWM_MAX_VAL));
+     out_mode = 8;
+  } else if (_PWM1Lookup && (pwmlog2 <= _BITBOUNDARY2)) {
+    float  minerr = _MAXERR;
+    float  bestdc = 0;
+    float bestpwm = 0;
+    float      dc = 0;
+    float     err = 0;
+    for (int16_t ipwm = _PWM1Start; ipwm <= _PWM1End; ipwm += _PWM1Step) {
+      dc = round(_DC_MAX_VAL * _PWM_MAX_VAL * pwmfract / ipwm);
+      if (dc >= _PWM1MINDC && dc <= _PWM1MAXDC) {
+        err = fabs(dc * ipwm / _DC_MAX_VAL / _PWM_MAX_VAL - pwmfract);
+        if (err < minerr) {
+           minerr = err * _PWM1REDUX;
+           bestdc = dc;
+          bestpwm = ipwm;
+        }
+      }
+    }
+    out_nchon = pwmfloor;
+       out_dc = bestdc;
+      out_pwm = bestpwm;
+     out_mode = 6;
+  } else if (_PWM2Lookup && (pwmlog2 <= _BITBOUNDARY3)) {
+    float  minerr = _MAXERR;
+    float  bestdc = 0;
+    float bestpwm = 0;
+    float      dc = 0;
+    float     err = 0;
+    for (int16_t ipwm = _PWM2End; ipwm >= _PWM2Start; ipwm -= _PWM2Step) {
+      dc = round(_DC_MAX_VAL * _PWM_MAX_VAL * pwmfract / ipwm);
+      if (dc >= _PWM2MINDC && dc <= _PWM2MAXDC) {
+        err = fabs(dc * ipwm / _DC_MAX_VAL / _PWM_MAX_VAL - pwmfract);
+        if (err < minerr) {
+           minerr = err * _PWM1REDUX;
+           bestdc = dc;
+          bestpwm = ipwm;
+        }
+      }
+    }
+    out_nchon = pwmfloor;
+       out_dc = bestdc;
+      out_pwm = bestpwm;
+     out_mode = 2;
+  }
+
+  if ((pwmlog2 <= _BITBOUNDARY4) && (out_dc == 0)) {
+    out_nchon = 0;
+      out_pwm = (uint32_t)(round(pwmfract * _DC_MAX_VAL * _PWM_MAX_VAL));
+       out_dc = 1;
+     out_mode++;
+  }
+
+  if (out_pwm >= _PWM_MAX_VAL) {
+    out_pwm = _PWM_MAX_VAL - 1;
+  }
+  if (out_dc > _DC_MAX_VAL) {
+    out_dc = _DC_MAX_VAL;
+  }
+
+  out.pwm  =   out_pwm;
+  out.dc   =    out_dc;
+  out.nch  = out_nchon;
+  out.mode =  out_mode;
+
+  return out;
+}
+
+uint8_t TLC5948::getNchFromMask(uint32_t in_ch_mask) {
+  uint8_t out_Nch = 0;
+  uint16_t lower16 = in_ch_mask & 0xFFFF; // Extract the lower 16 bits
+  while (lower16) {
+    out_Nch += lower16 & 1; // Check the least significant bit
+    lower16 >>= 1;        // Shift right to check the next bit
+  }
+
+  return out_Nch;
+}
+

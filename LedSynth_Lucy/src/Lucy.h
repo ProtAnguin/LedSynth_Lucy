@@ -1,4 +1,7 @@
 // TODO: add ESPWM settings to user interface
+// TODO: decode output from tlc.logi2pwm to MODE, NCHOK, DClast and PWMlast
+// TODO: change the way set works globaly to use logi value as the goal
+
 #define LEDSYNTHNAME          "Lucy"
 
 #define D_nTLCs               3
@@ -71,7 +74,7 @@ uint8_t isoBC[D_nTLCs] = {
 };
 
 // Led reference Index          0      1      2      3      4      5      6      7      8      9     10     11     12     13     14     15     16     17     18    // LED mapping
-uint16_t pwmVals[D_NLS] =  {65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535};
+float    pwmVals[D_NLS] =  {  0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0};
 uint16_t lambdas[D_NLS] =  {  363,   372,   385,   405,   422,   435,   453,   475,   491,   517,   538,   557,   573,   589,   613,   630,   659,   669,   679};
 int         mask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for stimulation
 int     adapMask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for adaptation

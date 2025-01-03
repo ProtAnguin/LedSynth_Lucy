@@ -102,25 +102,19 @@ void getPwm(){
   Serial.println("-- PwmVals for all LEDs --------------------------");
   Serial.println("   Format: index/driver/channel/pwm");
   for (uint8_t i = 0; i < D_NLS; i++) {
-    Serial.printf("  %i %i\n\r", i, pwmVals[i]);
+    Serial.printf("  %i %f\n\r", i, pwmVals[i]);
   }
   Serial.println("--------------------------------------------------");
 }
 
-void set(uint8_t led, int32_t pwmVal) {
-  led    = constrain(led,      0,   tlc.nLEDs);
-  pwmVal = constrain(pwmVal, -16,   tlc.MAX_PWM);
-  
-  if (pwmVal < 0) {
-    pwmVal = pwmVals[led] >> (-pwmVal-1) ;   // use ISO values: divide by 1 for -1, divide by 2 for -2, by 4 for -3, ...
-  }
-  
-  tlc.set(led, pwmVal, "P");
-  tlc.set(led, isoDC[led], "D");
+void set(uint8_t led, float pwmVal) {
+  led = constrain(led,      0,   tlc.nLEDs);
+
+  tlc.setLog(led, pwmVal);
   tlc.update();
 }
 
-void setRainbow(int32_t pwmVal) {
+void setRainbow(float pwmVal) {
   for (uint8_t i = 0; i < D_NLS; i++){
     set(i, pwmVal);
   }
@@ -148,9 +142,9 @@ void mainHelp() {
   Serial.println("  'pwmxxxxxyyyyyzzzzz...' to change pwm values (reset deletes the new values so use pwmsave");
   Serial.println("       before and pwmload each time after reset). This is a looooooong ");
   Serial.println("       command as for example, 1 must be written as 00001.");
-  Serial.println("  'setXXYYYY' to set the XX led to YYYY pwm value (set050050 is the same as set0550)");
+  Serial.println("  'setXXYYYY' to set the XX led to YYYY logi value (set050050 is NOT the same as set0550)");
   Serial.println("      special use: set00YYYY set the zero order diode to YYYY");
-  Serial.println("  'allXXXX'   to set all LEDs to XXXX pwm (0-4095)");
+  Serial.println("  'allXXXX'   to set all LEDs to XXXX logi");
   Serial.println("            Special use: 'all-1' sets all LEDs to isoQ values, -2 to isoQ/2, -3 to isoQ/4 ");
   Serial.println("  'oeX' and 'zeX' to set the output enable");
   Serial.println("  'bankX' to select the index of attenuation bank to use");
@@ -387,7 +381,7 @@ void sweepProtocol(String inStr) {
         didOfset = true;
       }
 
-      set( LED.curr, pwmVals[LED.curr]*pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
+      set( LED.curr, pwmVals[LED.curr] - (genAtt+Ibanks[N_USEBANK][LED.curr]) );
       flash(p_dur, sendTrigOut);
       set( LED.curr, 0 );
 
@@ -435,7 +429,7 @@ void peewsProtocol(String inStr) {
         didOfset = true;
       }
 
-      set( LED.curr, pwmVals[LED.curr]*pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
+      set( LED.curr, pwmVals[LED.curr] - (genAtt+Ibanks[N_USEBANK][LED.curr]) );
       flash(p_dur, sendTrigOut);
       set( LED.curr, 0 );
 
@@ -488,7 +482,12 @@ void vlogiProtocol(String inStr) {
       }
 
       for (int i = 0; i < D_NLS; i++) {
-        set( i, pow(10, v_fac+genAtt+Ibanks[N_USEBANK][i]) * mask[i] * pwmVals[i]);
+        if (mask[i]) {
+          set( i, pwmVals[i] - (v_fac+genAtt+Ibanks[N_USEBANK][i]));
+        } else {
+          set( i, 10.0);
+        }
+        
       }
 
       flash(p_dur, sendTrigOut);
@@ -542,7 +541,12 @@ void rampProtocol(String inStr) {
       
       Serial.println("Ramp: Led " + String(LED.curr) + " at " + String(v_fac) + " log of iso intensity.");
 
-      t_ramp_pwm = pow(10, v_fac+genAtt+Ibanks[N_USEBANK][LED.curr]) * mask[LED.curr] * pwmVals[LED.curr];
+      if (mask[LED.curr]) {
+        t_ramp_pwm = pwmVals[LED.curr] - (v_fac+genAtt+Ibanks[N_USEBANK][LED.curr]);
+      } else {
+        t_ramp_pwm = 10.0;
+      }
+      
 
       if (t_ramp_pwm > tlc.MAX_PWM) t_ramp_pwm = 0;
 
@@ -581,7 +585,11 @@ void blinkProtocol(String inStr) {
 
   setOe(0);
   for (int i = 0; i < D_NLS; i++) {
-    set( i, pow(10, genAtt+Ibanks[N_USEBANK][i]) * mask[i] * pwmVals[i]);
+    if (mask[i]) {
+      set( i, pwmVals[i] - (genAtt+Ibanks[N_USEBANK][i]));
+    } else {
+      set( i, 10.0);
+    }
   }
   
   while (command.substring(0, 4) != "stop") {
@@ -613,7 +621,11 @@ void adapProtocol(String inStr) {
   chooseLED("f");
 
   for (int i = 1; i < D_NLS; i++) {
-    set( i, pwmVals[i] * pow(10, adapAtt+Ibanks[N_USEBANK][i]) * adapMask[i]);
+    if (adapMask[i]) {
+      set( i, pwmVals[i] - (adapAtt+Ibanks[N_USEBANK][i]));
+    } else {
+      set(i, 10.0);
+    }
   }
   
   protReport( "report" );
@@ -634,10 +646,15 @@ void adapProtocol(String inStr) {
         didOfset = true;
       }
 
-      set( LED.curr, pwmVals[LED.curr] * pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
+      set( LED.curr, pwmVals[LED.curr] - (genAtt+Ibanks[N_USEBANK][LED.curr]) );
       envelope(1);
       delay(p_dur);
-      set( LED.curr, pwmVals[LED.curr] * pow(10, adapAtt+Ibanks[N_USEBANK][LED.curr]) * adapMask[LED.curr]);
+      if (adapMask[LED.curr]) {
+        set( LED.curr, pwmVals[LED.curr] - (adapAtt+Ibanks[N_USEBANK][LED.curr]));
+      } else {
+        set( LED.curr, 10.0);
+      }
+      
       envelope(0);
       delay(p_pau);
 
@@ -687,16 +704,16 @@ void singleLEDadapProtocol(String inStr) {
         didOfset = true;
         
         delay(p_ofs/2);
-        set( a, pwmVals[a]*pow(10, adapAtt+Ibanks[N_USEBANK][a]) );
+        set( a, pwmVals[a] - (adapAtt+Ibanks[N_USEBANK][a]) );
         delay(p_ofs/2);
       }
 
       if (sendTrigOut) trigOut(TRIGOUTPIN, D_TRIGOUTLEN);
 
-      set( LED.curr, pwmVals[LED.curr]*pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
+      set( LED.curr, pwmVals[LED.curr] - (genAtt+Ibanks[N_USEBANK][LED.curr]) );
       envelope(1);
       delay(p_dur);
-      if ( LED.curr == a) { set( LED.curr, pwmVals[a]*pow(10, adapAtt+Ibanks[N_USEBANK][a]) ); }
+      if ( LED.curr == a) { set( LED.curr, pwmVals[a] - (adapAtt+Ibanks[N_USEBANK][a]) ); }
       else {                set( LED.curr, 0 ); }
       envelope(0);
       delay(p_pau);
@@ -849,14 +866,14 @@ void loop() {
     }
     if (input.substring(0, 3) == "set") {
       uint8_t homeSetLed = input.substring(3, 5).toInt();
-      int32_t homeSetVal = input.substring(5).toInt();
+      float   homeSetVal = input.substring(5, 9).toInt() / 1000.0;
       set( homeSetLed, homeSetVal );
-      Serial.println("Set LED " + String(homeSetLed) + "@ PWM: " + String(homeSetVal));
+      Serial.printf("Set LED %2d @ logi %4.3f", homeSetLed, homeSetVal);
     }
     if (input.substring(0, 3) == "all") {
-      int32_t allVal = input.substring(3).toInt();
+      float allVal = input.substring(3, 7).toInt() / 1000.0;
       setRainbow(allVal);
-      Serial.println("Rainbow LEDs set to " + String(allVal));
+      Serial.printf("Rainbow LEDs set to %4.3f", allVal);
     }
     if (input.substring(0, 3) == "dir") {
       uint8_t  dir_setCh  = input.substring( 3,  5).toInt();
@@ -871,6 +888,24 @@ void loop() {
           dir_setPWM,
           dir_setDC,
           dir_setBC
+      );
+    }
+
+    if (input.substring(0, 4) == "logi") {
+      uint16_t in_logi_d = input.substring(4,  8).toInt();
+      uint8_t  in_nch    = input.substring(8, 10).toInt();
+      float    in_logi_f = in_logi_d / 1000.0;
+      TLC5948::LogiResults logiStruct = tlc.logi2pwm(in_logi_f, in_nch);
+
+      Serial.printf(
+        "LOGI   inLogi_d:%04d   inLogi_f:%4.3f  inNch:%2d    OUT:  nChON:%2d  PWM:%5d  DC:%3d  MODE:%d\n",
+        in_logi_d,
+        in_logi_f,
+        in_nch,
+        logiStruct.nch,
+        logiStruct.pwm,
+        logiStruct.dc,
+        logiStruct.mode
       );
     }
 

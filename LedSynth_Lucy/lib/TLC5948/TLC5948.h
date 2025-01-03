@@ -6,6 +6,9 @@
 #ifndef TLC5948_LIB_H
 #define TLC5948_LIB_H
 #include <SPI.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <math.h>
 
 // Define the class
 class TLC5948 {
@@ -43,6 +46,13 @@ class TLC5948 {
     bool debugTLCflag = false;
     bool printFramesTLCflag = false;
 
+    struct LogiResults {
+      uint16_t pwm;
+      uint8_t dc;
+      uint8_t nch;
+      uint8_t mode;
+    };
+
     // Other member functions
     void update();
     void begin();
@@ -52,9 +62,13 @@ class TLC5948 {
     void sendFramesSPI();
     void printFrames();
     String int16toStr(uint16_t var);
+    String int32toStr(uint32_t var);
     void set(uint8_t LEDn, uint32_t setValue, String setWhat);
+    void setLog(uint8_t LEDn, float logi);
     void printCPWM();
     void setChannel(uint8_t setCh, uint8_t setDr, uint16_t setPWM, uint8_t setDC, uint8_t setBC);
+    LogiResults logi2pwm(float logi, uint8_t nch);
+    uint8_t getNchFromMask(uint32_t in_ch_mask);
 
   private:
     const uint16_t _initPWM     = 0;
@@ -81,6 +95,31 @@ class TLC5948 {
     uint8_t   _BC_MAX_VAL = MAX_BC;
 
     SPISettings _SPIset;
+
+    // Variables corresponding to former #defines
+    uint8_t _BITBOUNDARY1 = 8;
+    uint8_t _BITBOUNDARY2 = 14;
+    uint8_t _BITBOUNDARY3 = 16;
+    uint8_t _BITBOUNDARY4 = 20;
+
+    uint8_t  _PWM1Lookup = 1;
+    uint16_t  _PWM1Start = 128;
+    uint16_t   _PWM1Step = 4;
+    uint16_t    _PWM1End = 256;
+    uint8_t   _PWM1MINDC = 2;
+    uint8_t   _PWM1MAXDC = 127;
+    float     _PWM1REDUX = 0.8;
+
+    uint8_t  _PWM2Lookup = 1;
+    uint16_t  _PWM2Start = 4;
+    uint16_t   _PWM2Step = 2;
+    uint16_t    _PWM2End = 128;
+    uint8_t   _PWM2MINDC = 1;
+    uint8_t   _PWM2MAXDC = 32;
+    float     _PWM2REDUX = 0.8;
+
+    float       _MINLOGI = 7.0;
+    float        _MAXERR = 1.0;
 };
 
 #endif // ifndef TLC5948_LIB_H
