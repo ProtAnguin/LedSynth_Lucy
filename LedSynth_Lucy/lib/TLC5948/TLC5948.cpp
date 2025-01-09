@@ -299,6 +299,65 @@ void TLC5948::set(uint8_t LEDn, uint32_t setValue, String setWhat) {
   }
 };
 
+
+void TLC5948::set2(uint8_t LEDn, float logi) {
+
+  // Check if LEDn is in usable range
+  if(LEDn < 0 || LEDn >= nLEDs) return;
+
+  uint32_t tMASK = mask[LEDn];
+  int tDRI  = tMASK >> 16; // take the upper bits for driver
+
+  uint8_t thisledch = __builtin_popcount(tMASK & 0xFFFF) ;
+
+  // override: all leds with 1 channel only; TODO: implement negative values
+  thisledch=1;
+  uint32_t t = logi2pwm (logi,thisledch)  ;
+  
+  uint8_t  out_mode   = (t>>29) & 0x0007 ;
+  uint8_t  out_nchon  = (t>>24) & 0x001f ;
+  uint8_t  out_dc     = (t>>16) & 0x007f ;
+  uint16_t out_pwm    =  t      & 0xffff ; 
+
+  // if (debugTLCflag) 
+  { Serial.printf ("SET2 logi=%7.3f, led=%2i, nch=%2i -> on=%2i, pwm=%5i, dc=%3i, mode=%2i. ", 
+                                     logi, LEDn, thisledch, out_nchon, out_pwm, out_dc, out_mode) ;
+  }
+
+  // SET PWM & DC
+    for (int i = 0; i < nch; i++) {
+      if ((tMASK >> i) & 1)  // if bit in mask is 1
+      {
+        if (out_nchon>0)
+        { 
+            cpwm[i + tDRI * nch] = _PWM_MAX_VAL; // max PWM
+            cDC[i + tDRI * nch]  = _DC_MAX_VAL;  // max DC
+            out_nchon--;
+            // if (debugTLCflag) 
+            Serial.printf("Max") ;
+        }
+        else if (out_pwm>0)
+        {
+            cpwm[i + tDRI * nch] = out_pwm; // update pwm value
+            cDC[i + tDRI * nch]  = out_dc;  // update Dot Correction value     
+            out_pwm = 0 ;
+            // if (debugTLCflag) 
+            Serial.printf("Set") ;
+        }
+        else
+        {
+            cpwm[i + tDRI * nch] = 0; 
+            cDC[i + tDRI * nch]  = 0; 
+            // if (debugTLCflag) 
+            Serial.printf("Nul") ;
+        }
+        // not touching global BC for now
+      }
+    }
+    // if (debugTLCflag) 
+    Serial.printf("\n") ;
+}
+
 void TLC5948::printCPWM() {
   // Header
   Serial.print("Driver:  ");
@@ -371,4 +430,249 @@ void TLC5948::setChannel(uint8_t setCh, uint8_t setDr, uint16_t setPWM, uint8_t 
   
   // report
   Serial.printf("Ch:%2d Dr:%2d PWM:%5d DC:%3d BC:%3d\n", setCh, setDr, setPWM, setDC, setBC);
+}
+
+
+
+
+
+
+
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+// FUNCTION TO CALCULATE PWM/DC value
+
+/*  
+    uint32_t logi2pwm (float logi, uint8_t nch )
+    
+    finds a good pwm (0-65535) and dc combo for TLC5948a in ESPWM mode. 
+    input: logi - decadic logarithm of intensity (larger values are dimmer)
+           nch  - number of ganged channels (1 or more)
+    return packing of relevant values in 3-5-8-16 bits. 
+         ( (out_mode  & 0x07) << 29 ) | 
+         ( (out_nchon & 0x1f) << 24 ) | 
+         ( (out_dc    & 0x7f) << 16 ) | 
+         ( (out_pwm   & 0xffff) );
+    
+    For a single channel, PWM provides 16 bits, dc 7 bits, so all together there are about 23 bits to play around; 0 bits mean 1 channel at full, 
+    22 bits mean very small dc and low pwm. the absolute lowest light would correspond to 22.989 bits = log2 (MAXPWM*MAXDC) of dynamic reserve. 
+    The function using input nch=1 abd negative logi values will switch to "multichannel" mode 7 (-0.301 = 2 leds, -0.602 = 4 leds, -1.0 = 10 leds).
+    Note 1 (decadic magnitude=logI unit) = 3.3219 bits (=octaves 2x), as per 1/log10(2)), and 2 bits = 0.301 decades.
+    
+    (PWMSTEP) Granularity 128 (values 128,256,384,512 ...) makes all 512 segments on, flashing produces with maximally reduced low harmonics
+    GS Clock 10.0 MHz, Update frequency 150Hz, main harmonic 19.5 kHz
+    GS Clock 12.8 MHz, Update frequency 195Hz, main harmonic 25.0 kHz
+    GS Clock 16.0 MHz, Update frequency 244Hz, main harmonic 31.2 kHz
+    Granularity N directly means that the lowest harmonic will be at the N*update frequency. So we like to have at least 4 for vision purposes.
+    The code is looking for a good PWM/DC combo, including several channels being fully on (mode7), before switching off all but a single channel,
+    and this is done with descending modes 6 to 1 with decreasing granularities, at the end (mode1) we give up and allow all PWM values.  
+*/
+
+#include <stdio.h>
+#include <stdint.h>
+#include <math.h>
+
+// values related to TLC5948a
+#define MAXPWM         65535   // MAXPWM divider is 65535, as per TLC5948A sheet, note that the last (128th) ESPWM segment has 511, not 512 bits!
+#define MAXDC          127     // supposedly linear from 1 to 127, let's see 
+
+//                                 mode 7 is used when multiple channels in use
+#define BITBOUNDARY0     4      // mode 6 below this boundary 
+#define BITBOUNDARY1     7      // mode 5 below this boundary 
+#define BITBOUNDARY2    14      // mode 4 below this boundary (search or direct when M4SEARCH is false)
+#define BITBOUNDARY3    17      // mode 3 below this boundary  
+#define BITBOUNDARY4    19      // mode 2 below this boundary 
+#define BITBOUNDARY5    22      // mode 1 below this boundary (last resort) 
+                                // mode 0 above this boundary, all off
+
+#define M7FORCEMAXDC    1       // when true, DC=127 is forced with multiple channels in use
+#define M6FORCEMAXDC    1       // when true, DC=127 is on single channel mode6
+#define M5FORCEMAXDC    0       // when true, DC=127 is on single channel mode5
+
+#define M7STEP          128     // mode 7  PWM granularity when multiple channels are used - (128, fills all the 512 segments)
+#define M6STEP          128     // mode 6  PWM granularity when a single channel is used below BITBOUNDARY0 (128) 
+#define M5STEP          32      // mode 5  PWM granularity when a single channel is used below BITBOUNDARY1 (16, 32)
+#define M4STEP          16      // mode 4  PWM search step  (8, 16) 
+#define M3STEP          8       // mode 3  PWM search step  (4,8)   
+#define M2STEP          4       // mode 2  PWM granularity  (2,4)
+#define M1STEP          1       // mode 1  PWM granularity  (1,2)
+
+// mode 4 - search incrementing, going from M4START to M4END 
+#define M4SEARCH        1       // enable/disable search in range BITBOUNDARY1 ... BITBOUNDARY2, enabled: mode 4, diabled: mode 3
+#define M4PWM          128      // when search in mode 4 is not on,  fix PWM to this value
+#define M4START       128
+#define M4END         512
+#define M4MINDC         2
+#define M4MAXDC       127
+#define M4REDUX       0.9       // we only rewrite the next best if error is reduxed ... 1-10%?
+
+// mode 3 - search decrementing, going from M2END to M2START
+#define M3SEARCH        1     // enable/disable search in range BITBOUNDARY2 ... BITBOUNDARY3, enabled: mode 2, disabled: mode 1
+#define M3START        16 
+#define M3END         128+16
+#define M3MINDC         1
+#define M3MAXDC        16
+#define M3REDUX         0.9  // we only rewrite the next best if error is reduxed for ... 1-10%?
+
+#define MAXERR 1   // arbitrary start value for error search in lookups, should be minimally 1
+                   // err = fabs (dc*pwm/MAXDC/MAXPWM - pwmfract ), as both elemenents inside fabs are [0..1]
+
+
+// ----------------------------------------------------------------------------------------------------------------- FUNCTION STARTS HERE
+
+uint32_t TLC5948::logi2pwm (float logi, uint8_t nch ) {
+// calculate pwm values for an LED connected to 1-16 channels
+
+if ((nch<1) || (nch>16)) {   // printf("error: nch should be 1..16 \n") ;
+   return 0xFFFF;        }
+
+float pwmfloat = pow(10.0,-logi) * (float)(nch);
+float pwmfloor = floor(pwmfloat) ;
+float pwmfract = pwmfloat - pwmfloor ;
+
+// pwmlog2 holds the "pwm bits" that are used for the mode boundary determination
+// floor of pwmlog2 is above or equal to 0 (and say below 22)
+// or set to -1 if pwm fraction is exactly 0
+int32_t pwmlog2 = -1;
+if (pwmfract>0) {      pwmlog2  = (int32_t) floor(-log2(pwmfract)) ;     
+                } 
+
+// declare default outputs for a LED turned off
+uint8_t  out_nchon = 0; 
+uint8_t  out_dc = 0;
+uint8_t  out_mode = 0; 
+uint32_t out_pwm = 0;                        
+
+out_nchon = (uint8_t)pwmfloor ; 
+
+if (out_nchon>0 )                   // mode 7 (several channels) 
+    {       out_mode  = 7;             
+            float pwm   = (uint32_t)(round(pwmfract*MAXPWM/M7STEP)*M7STEP ) ;         
+            if (pwm>MAXPWM) 
+                pwm=MAXPWM ; 
+            out_pwm = (uint32_t)pwm ;
+            if ( M7FORCEMAXDC )  
+                 { out_dc    = MAXDC ; }      
+            else { out_dc    = (uint32_t)(round(MAXDC*MAXPWM*pwmfract/pwm)) ; 
+                   // if (out_dc>MAXDC) out_dc=MAXDC ;
+            }   
+    } 
+
+else if (pwmlog2<BITBOUNDARY0)       // mode 6 (single channel, high PWM)
+    {       out_mode  = 6;          
+            float pwm   = (uint32_t)(round(pwmfract*MAXPWM/M6STEP)*M6STEP ) ;         
+            if (pwm>MAXPWM) 
+                pwm=MAXPWM ;
+            out_pwm = (uint32_t)pwm ;
+            if ( M6FORCEMAXDC )  
+                 { out_dc    = MAXDC ;}    
+            else { out_dc    = (uint32_t)(round(MAXDC*MAXPWM*pwmfract/pwm)) ; 
+                   // if (out_dc>MAXDC) out_dc=MAXDC ;
+                }
+    }
+
+else if (pwmlog2<BITBOUNDARY1) 
+    {       out_mode  = 5;          
+            float pwm   = (uint32_t)(round(pwmfract*MAXPWM/M5STEP)*M5STEP ) ;         
+            if (pwm>MAXPWM) 
+                pwm=MAXPWM ;
+            out_pwm = (uint32_t)pwm ;
+            if ( M5FORCEMAXDC )  
+                 { out_dc    = MAXDC ;}    
+            else { out_dc    = (uint32_t)(round(MAXDC*MAXPWM*pwmfract/pwm)) ; 
+                   // if (out_dc>MAXDC) out_dc=MAXDC ;            
+                 }
+    }
+
+else if (pwmlog2<BITBOUNDARY2)               // mode 4 search
+{    if (M4SEARCH) {
+        float minerr=MAXERR;
+        float bestdc=0; 
+        float bestpwm=0;
+        for (int16_t ipwm = M4START ; ipwm<=M4END ; ipwm+=M4STEP  ) {
+            float pwm = (float)ipwm;
+            float dc  = round (MAXDC*MAXPWM*pwmfract/pwm) ;
+            if ((dc>=M4MINDC) && (dc<=M4MAXDC)) {
+                float err = fabs  (dc*pwm/MAXDC/MAXPWM - pwmfract ) ;
+                if (err<minerr) {
+                    minerr=err*M4REDUX;
+                    bestdc=dc;
+                    bestpwm = pwm;
+                }
+            }
+        }
+        out_nchon = (uint8_t)pwmfloor;
+        out_dc =    (uint8_t)bestdc; 
+        out_pwm =   (uint32_t)bestpwm;
+        out_mode =  4; 
+    } else {                                    // mode 4 - direct set pwm and calculate the DC
+        out_nchon = (uint8_t)pwmfloor ;
+        out_pwm   = M4PWM ; 
+        out_dc    = (uint8_t)(round (pwmfract * MAXDC * MAXPWM / M4PWM )) ; 
+        out_mode  = 4; 
+    } 
+}
+else if ((pwmlog2<BITBOUNDARY3) && M3SEARCH) // mode 2 search, code copied from above but the for loop direction is from End to Start
+{   
+        float minerr=MAXERR;
+        float bestdc=0; 
+        float bestpwm=0;
+        for (int16_t ipwm = M3END ; ipwm>=M3START ; ipwm-=M3STEP  ) {
+            float pwm = (float)ipwm;
+            float dc  = round (MAXDC*MAXPWM*pwmfract/pwm) ;
+            if ((dc>=M3MINDC) && (dc<=M3MAXDC)) {
+                float err = fabs  (dc*pwm/MAXDC/MAXPWM - pwmfract ) ;
+                if (err<minerr) {
+                    minerr=err*M3REDUX;
+                    bestdc=dc;
+                    bestpwm = pwm;
+                }
+            }
+        }
+        out_nchon = (uint8_t)pwmfloor;
+        out_dc    = (uint8_t)bestdc; 
+        out_pwm   = (uint32_t)bestpwm;
+        out_mode  = 3; 
+}
+else if (pwmlog2<BITBOUNDARY4)
+{    
+    out_nchon=0;
+    out_pwm = (uint32_t)(round(pwmfract*MAXDC*MAXPWM/M2STEP)*M2STEP) ;
+    out_dc = 1;
+    out_mode=2;
+}
+
+// if none of the if clauses above were taken, then out_dc is 0 - also in the case that the two search modes have effed it up.
+if ((out_dc==0) && (pwmlog2<BITBOUNDARY5))          // mode 1 last resort, we set dc to 1 and pwm accordingly; also runs if previous modes returned dc=0
+{    
+    out_nchon=0;
+    out_pwm = (uint32_t)(round(pwmfract*MAXDC*MAXPWM/M1STEP)*M1STEP) ;
+    out_dc = 1;
+    out_mode=1;
+}
+
+// paranoia section :-)
+   if (out_dc>0x7F)      { // printf("corr: DCMAX=%i\n",out_dc);   
+                           out_dc = 0x7F; 
+    }    
+/* if (out_pwm>=0xFFFF)  { // printf("corr: PWMAX=%i\n",out_pwm);  
+                           out_pwm= 0xFFFF; 
+    }
+*/
+
+/*
+  // print the values for debugging purposes 
+  float power  = -log10 ( ((float)(out_dc) * (float)(out_pwm)/MAXDC/MAXPWM + (float)(out_nchon)) / nch ) ;
+  float relerr = (power - logi);
+  printf("logi=%+5.2f err=%+7.3f ",logi,relerr);
+  printf("  %5.2f=%5.2f+%5.2f",pwmfloat,pwmfloor,pwmfract); 
+  printf("pwmlog2=%+06.2f : pwr=%+5.2f ",pwmlog2, power);
+  printf("mode=%1i onch=%1i dc=%03i pwm=%05i\n", out_mode,out_nchon,out_dc,out_pwm ); 
+*/
+
+// packing is 3-5-8-16 bits
+return ( ( (out_mode  & 0x07) << 29 ) | 
+         ( (out_nchon & 0x1f) << 24 ) | 
+         ( (out_dc    & 0x7f) << 16 ) | 
+         ( (out_pwm   & 0xffff) ) );
 }

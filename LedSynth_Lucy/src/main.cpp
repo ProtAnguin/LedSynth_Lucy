@@ -107,7 +107,7 @@ void getPwm(){
   Serial.println("--------------------------------------------------");
 }
 
-void set(uint8_t led, int32_t pwmVal) {
+void setold(uint8_t led, int32_t pwmVal) {
   led    = constrain(led,      0,   tlc.nLEDs);
   pwmVal = constrain(pwmVal, -16,   tlc.MAX_PWM);
   
@@ -117,6 +117,13 @@ void set(uint8_t led, int32_t pwmVal) {
   
   tlc.set(led, pwmVal, "P");
   tlc.set(led, isoDC[led], "D");
+  tlc.update();
+}
+
+void set(uint8_t led, int32_t pwmVal) {
+  led    = constrain(led,      0,   tlc.nLEDs);
+  float fpwm = (float)(constrain(pwmVal, 0, 999))/100.0;
+  tlc.set2(led, fpwm);
   tlc.update();
 }
 

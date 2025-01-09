@@ -21,6 +21,7 @@
 
 uint32_t CHmask[D_NLS] = {   // Channel mask
   //DDLLLLLLLLLLLLLLLL     binary for driver (bits 17+) and LED mask (bits 1-16)
+  //001111111111111111
   0b001110000000000000, // LED  0    3 ch   xxx
   0b000001111110000000, // LED  1    6 ch   xxxxxx
   0b000000000001100000, // LED  2    2 ch   xx
@@ -42,7 +43,8 @@ uint32_t CHmask[D_NLS] = {   // Channel mask
   0b100000000100000000  // LED 18    1 ch   x
 };
 
-uint8_t isoDC[D_NLS] = {
+uint8_t isoDC[D_NLS] = {127} ;
+/* {
   31,  // LED  0
   31,  // LED  1
   31,  // LED  2+
@@ -63,6 +65,7 @@ uint8_t isoDC[D_NLS] = {
   31,  // LED 17
   31   // LED 18
 };
+*/
 
 uint8_t isoBC[D_nTLCs] = {
   127, // TLC 0b00

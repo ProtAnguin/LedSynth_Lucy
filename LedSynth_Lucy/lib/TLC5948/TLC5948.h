@@ -6,6 +6,7 @@
 #ifndef TLC5948_LIB_H
 #define TLC5948_LIB_H
 #include <SPI.h>
+#include <math.h>
 
 // Define the class
 class TLC5948 {
@@ -53,8 +54,10 @@ class TLC5948 {
     void printFrames();
     String int16toStr(uint16_t var);
     void set(uint8_t LEDn, uint32_t setValue, String setWhat);
+    void set2(uint8_t LEDn, float logi);
     void printCPWM();
     void setChannel(uint8_t setCh, uint8_t setDr, uint16_t setPWM, uint8_t setDC, uint8_t setBC);
+    uint32_t logi2pwm (float logi, uint8_t nch );
 
   private:
     const uint16_t _initPWM     = 0;
@@ -82,5 +85,14 @@ class TLC5948 {
 
     SPISettings _SPIset;
 };
+
+
+
+
+
+
+
+
+
 
 #endif // ifndef TLC5948_LIB_H
