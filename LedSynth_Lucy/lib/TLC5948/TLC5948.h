@@ -53,11 +53,13 @@ class TLC5948 {
     void sendFramesSPI();
     void printFrames();
     String int16toStr(uint16_t var);
-    void set(uint8_t LEDn, uint32_t setValue, String setWhat);
-    void set2(uint8_t LEDn, float logi);
+    void setpwm(uint8_t LEDn, uint32_t setValue, String setWhat);
+    void setlog(uint8_t LEDn, float logi);
     void printCPWM();
+    void printMask();
     void setChannel(uint8_t setCh, uint8_t setDr, uint16_t setPWM, uint8_t setDC, uint8_t setBC);
     uint32_t logi2pwm (float logi, uint8_t nch );
+    void printLogi2pwm(float logi);
 
   private:
     const uint16_t _initPWM     = 0;
