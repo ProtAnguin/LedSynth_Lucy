@@ -8,6 +8,8 @@
 #include <SPI.h>
 #include <math.h>
 
+#define LATCHDELAYUS 10
+
 // Define the class
 class TLC5948 {
   public:
@@ -47,6 +49,7 @@ class TLC5948 {
     // Other member functions
     void update();
     void begin();
+    float setGSCLK( float frequency );
     void makePwmValues();
     void makeControlValues();
     void latch();
@@ -73,7 +76,6 @@ class TLC5948 {
     int _LAT_PIN;
     uint _ANALOG_WRITE_BIT_RES  = 2;
     int _GOAL_SCLK_HZ           = 10000000; // Serial clock speed in Hz
-    int _GOAL_GSCLK_HZ          = 10000000; // Gray scale closk speed in Hz (10 MHz clock gives 152 Hz repeat, with PWM > 4 it brings it up to 600 Hz)
     int _frameSize              = 16; // sending with transfer16 (hardcoded and has to be 16 for now)
     int _bw                     = 257; // width of bits per driver
     uint _totnch;
@@ -84,6 +86,10 @@ class TLC5948 {
     uint8_t   _DC_MAX_VAL = MAX_DC;
     uint8_t   _BC_MIN_VAL = 0;
     uint8_t   _BC_MAX_VAL = MAX_BC;
+
+    float _GOAL_GSCLK_MHZ = 10; // Gray scale closk speed in Hz (10 MHz clock gives 152 Hz repeat, with PWM > 4 it brings it up to 600 Hz)
+    float _GSCLK_MIN_MHZ = 1 ;
+    float _GSCLK_MAX_MHZ = 14.2 ;                  // PROLLY NUT NECESSARY TO HAVE THESE AS VARIABLES?
 
     SPISettings _SPIset;
 };

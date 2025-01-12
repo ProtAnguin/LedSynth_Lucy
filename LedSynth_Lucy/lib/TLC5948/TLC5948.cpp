@@ -42,12 +42,51 @@ void TLC5948::begin() {
   pinMode(_LAT_PIN, OUTPUT);
   digitalWrite(_LAT_PIN, LOW);
 
+  setGSCLK (_GOAL_GSCLK_MHZ ) ; 
+  // analogWriteFrequency(_GS_PIN, _GOAL_GSCLK_HZ);                                // TODO: make frequency user - selectable!!!!
+  // analogWriteResolution(_ANALOG_WRITE_BIT_RES);
+  // analogWrite(_GS_PIN, (1 << (_ANALOG_WRITE_BIT_RES-1))); // set 50% duty cycle
+
+  // clean up the chips?
+  update();
+  update();
+}
+
+// TODO: SHOULD REPORT THE ACTUAL FREQUENCY!!!!!!
+// WIRING: consider using a FLEXPWM pin as described in the code in the links
+// NOTE: the electrical calibration of LEDs MIGHT well depend on the frequency used!!!!
+// how is the frequency determined by Resolution and clock??
+// https://www.pjrc.com/teensy/td_pulse.html
+// https://forum.pjrc.com/index.php?threads/teensy-4-1-available-pwm-frequencies.63168/
+// https://forum.pjrc.com/index.php?threads/using-teensy-4-1-to-generate-square-wave-at-precise-frequency.75798/
+
+
+float TLC5948::setGSCLK( float frequency )                                       
+{
+  float f = constrain ( frequency , _GSCLK_MIN_MHZ, _GSCLK_MAX_MHZ ) ;
   pinMode(_GS_PIN, OUTPUT);
-  analogWriteFrequency(_GS_PIN, _GOAL_GSCLK_HZ);
+  analogWrite(_GS_PIN, 0) ;
+  analogWriteFrequency(_GS_PIN, f * 1000000.0 ) ;                                
   analogWriteResolution(_ANALOG_WRITE_BIT_RES);
   analogWrite(_GS_PIN, (1 << (_ANALOG_WRITE_BIT_RES-1))); // set 50% duty cycle
+  return f ;                                                                   
+}
 
-  update();
+void TLC5948::latch() {                                                           // TODO: add output to one of the info pin?
+  int latchDelay = LATCHDELAYUS; // microseconds                                  
+  delayMicroseconds(latchDelay);
+  digitalWrite(_LAT_PIN, HIGH);
+  delayMicroseconds(latchDelay);
+  digitalWrite(_LAT_PIN, LOW);
+  delayMicroseconds(latchDelay);
+}
+
+void TLC5948::sendFramesSPI() {
+  SPI.beginTransaction(_SPIset);
+  for (int i = 0; i < _nFrames; i++) {
+    inFrames[i] = SPI.transfer16(outFrames[i]);
+  }
+  SPI.endTransaction();
 }
 
 // Implement other member functions
@@ -93,10 +132,10 @@ void TLC5948::makePwmValues() {
 
       int cF = ((mP + _frameSize - 1) / _frameSize)-1;
       
-      if (debugTLCflag) {
+      if (printFramesTLCflag) {
         Serial.printf("MakePWM  Driver:%02d Ch:%02d Val:>%5d< Frame:%3d mP:%5d s1:%3d s2:%3d [%2d:%2d]  \n", cD, cC, cV, cF, mP, cS1, cS2, cP1, cP2);
       }
-
+      
       if (cS1 < 0) {
         outFrames[cF] |= (cV >> abs(cS1));
       }
@@ -205,7 +244,7 @@ void TLC5948::makeControlValues() {
 
       int cF = ((mP + _frameSize - 1) / _frameSize)-1;
       
-      if (debugTLCflag) {
+      if (printFramesTLCflag) {
         Serial.printf("MakeCONT Driver:%02d Ch:%02d Val:>%5d< Frame:%3d mP:%5d s1:%3d s2:%3d [%2d:%2d]  \n", cD, cC, cV, cF, mP, cS1, cS2, cP1, cP2);
       }
 
@@ -229,41 +268,6 @@ void TLC5948::makeControlValues() {
   }
 }
 
-void TLC5948::sendFramesSPI() {
-  SPI.beginTransaction(_SPIset);
-  for (int i = 0; i < _nFrames; i++) {
-    inFrames[i] = SPI.transfer16(outFrames[i]);
-  }
-  SPI.endTransaction();
-}
-
-void TLC5948::latch() {                                                           // TODO: add output to one of the info pin?
-  int latchDelay = 10; // microseconds                                            // TODO: write the delay to the header!
-  delayMicroseconds(latchDelay);
-  digitalWrite(_LAT_PIN, HIGH);
-  delayMicroseconds(latchDelay);
-  digitalWrite(_LAT_PIN, LOW);
-  delayMicroseconds(latchDelay);
-}
-
-void TLC5948::printFrames() {
-  for (int i = 0; i < _nFrames; i++) {
-    Serial.printf("Frame %3d OUT: ", i);
-    Serial.print(int16toStr(outFrames[i]));
-    Serial.print(" IN: ");
-    Serial.print(int16toStr( inFrames[i]));
-    Serial.println();
-  }
-  Serial.println("----------------------------------------------------");
-}
-
-String TLC5948::int16toStr(uint16_t var) {
-  String strOut = "";
-  for (int i = 15; i >= 0; i--)  {
-    strOut += ((var >> i) & 1) == 1 ? "1" : "0";
-  }
-  return strOut;
-}
 
 void TLC5948::setpwm(uint8_t LEDn, uint32_t setValue, String setWhat) {                  // TODO: change String setWhat to char, as only one char used!
   // use mask and populate --> cpwm cDC and cBC
@@ -334,29 +338,45 @@ void TLC5948::setlog(uint8_t LEDn, float logi) {
             cpwm[i + tDRI * nch] = _PWM_MAX_VAL; // max PWM
             cDC[i + tDRI * nch]  = _DC_MAX_VAL;  // max DC
             out_nchon--;
-            // if (debugTLCflag)             
-            Serial.printf("2") ;
+            if (debugTLCflag) Serial.printf("2") ;
         }
         else if (out_pwm>0)
         {
             cpwm[i + tDRI * nch] = out_pwm; // update pwm value
             cDC[i + tDRI * nch]  = out_dc;  // update Dot Correction value     
             out_pwm = 0 ;
-            // if (debugTLCflag) 
-            Serial.printf("1") ;
+            if (debugTLCflag) Serial.printf("1") ;
         }
         else
         {
             cpwm[i + tDRI * nch] = 0; 
             cDC[i + tDRI * nch]  = 0; 
-            // if (debugTLCflag) 
-            Serial.printf("0") ;
+            if (debugTLCflag) Serial.printf("0") ;
         }
         // not touching global BC for now
       }
     }
-    // if (debugTLCflag) 
-    Serial.printf("\n") ;
+    if (debugTLCflag) Serial.printf("\n") ;
+}
+
+
+String TLC5948::int16toStr(uint16_t var) {
+  String strOut = "";
+  for (int i = 15; i >= 0; i--)  {
+    strOut += ((var >> i) & 1) == 1 ? "1" : "0";
+  }
+  return strOut;
+}
+
+void TLC5948::printFrames() {
+  for (int i = 0; i < _nFrames; i++) {
+    Serial.printf("Frame %3d OUT: ", i);
+    Serial.print(int16toStr(outFrames[i]));
+    Serial.print(" IN: ");
+    Serial.print(int16toStr( inFrames[i]));
+    Serial.println();
+  }
+  Serial.println("----------------------------------------------------");
 }
 
 void TLC5948::printCPWM() {

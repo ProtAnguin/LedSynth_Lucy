@@ -1,6 +1,48 @@
 // PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT
 // PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT
 // PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT PROT
+
+bool change         = true;
+bool waitForTrigIn  = false;
+bool sendTrigOut    = false;
+bool protActive     = false;
+
+uint16_t p_ofs   = 500;  // Offset, duration, pause and wait times [ms] for protocol stimulation
+uint16_t p_dur   = 50;
+uint16_t p_pau   = 147;
+uint16_t p_wait  = 107;
+
+float    genAtt     = 0.0;  // General and adaptational atenuation [log]
+float    adapAtt    = 0.0;
+float    v_f        = -3.6; // V-logI <f>rom, <s>tep and <t>o values [log]
+float    v_s        = 0.3;
+float    v_t        = 0.0;
+
+//--------------------------------------------------------------------------------------- COMPATIBILITY
+
+void set(uint8_t led, int32_t pwmVal) {                                               // TODO: consider removing; this is for OLD set used by "protocols"
+  // TODO constrain should be addressed in the library only?
+  // led    = constrain(led,      0,   tlc.nLEDs);       
+  // pwmVal = constrain(pwmVal,   0,   tlc.MAX_PWM);
+  /* if (pwmVal < 0) {
+    pwmVal = pwmVals[led] >> (-pwmVal-1) ;   
+    // use ISO values: divide by 1 for -1, divide by 2 for -2, by 4 for -3, ...
+  }
+  */
+  tlc.setpwm(led, pwmVal, "P");
+  tlc.setpwm(led, isoDC[led], "D");
+  update();                                                                         
+}
+
+void setRainbow (int32_t pwmVal) {                                                      // name used by Protocols, should be setRainbowPWM
+  for (uint8_t i = 0; i < D_NLS; i++){                                                  // TODO: to be removed
+    tlc.setpwm(i, pwmVal, "P");
+  }
+  update() ;
+}
+
+//--------------------------------------------------------------------------------------- COMPATIBILITY NEDS
+
 int nlsUsed(int arr[]) {
   int sumVal = 0;
   for (int i = 0; i < D_NLS; i++) {
