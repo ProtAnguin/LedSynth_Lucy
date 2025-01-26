@@ -3,8 +3,6 @@
 NOTE: USING ',' COMMA INSTEAD OF ASTERISK AS THE DELIMITER, IT IS MORE EASY TO DO
 NOTE: USING '!' for update
 
-
-
 1 PP HIGH PRIORITY implement PWM frequency change command, and report the frequency to the user
 
 2 MI HIGH PRIORITY Make a new calibration protocol 
@@ -12,8 +10,8 @@ NOTE: USING '!' for update
   
   PP CORRECTION OF ELECTRICAL CHARACTERISTICS
      PWL piecewise linear interpolation is the way to go!
-     store crrection for each LED as a list of float doublets (desired log,command log). 
-     for a LED "piflar" you need the 2 logi doublets. 
+     store crrection for each LED as a list of float doublets (desired log,command log).
+     for a LED "piflar" you need the 2 logi doublets.
      for a LED with a single "knee" you need 3 doublets
      for a LED both with a low knee and droop you need 4 doublets and more is unnecessary.
      in the first instance, the calculation may be done outside (matlab, octave, python?), after catching the output of OPT4048 values.
@@ -62,31 +60,37 @@ NOTE: USING '!' for update
 #include "Lucy.h"
 #include "easter.h"
 
-String input = "help";   //used for storing incoming strings, set to prot to go into ProtocolBuilder on startup
+String input = "help";   //used for storing incoming strings, set to <prot> to go into ProtocolBuilder on startup
 String command = ""; // used to store the command that the user sends via Serial port (empty at Init)
-
-// const int EEPROM_ADD_START = 0;
-// const int EEPROM_ADD_STEP = sizeof(uint32_t);
 
 TLC5948 tlc(D_nTLCs, D_NLS, CHmask);
 
 bool trigReceived   = false;
-void trigInISR() { trigReceived = true; }
-void trigOut(uint8_t trigPin, uint16_t dur) { digitalWrite(trigPin, HIGH);  delay(dur);  digitalWrite(trigPin, LOW); }
-void envelope(bool state) {  digitalWrite(ENVELOPEPIN, state); }
+void trigInISR() {
+  trigReceived = true;
+}
 
-void update() { 
+void trigOut(uint8_t trigPin, uint16_t dur) {
+  digitalWrite(trigPin, HIGH);
+  delay(dur);
+  digitalWrite(trigPin, LOW);
+}
+
+void envelope(bool state) {
+  digitalWrite(ENVELOPEPIN, state);
+}
+
+void update() {
   digitalWrite(INFOPIN,1) ; 
   tlc.update() ; 
   digitalWrite(INFOPIN,0) ; 
   // Serial.print("!") ; 
 }
 
-void waitTrigUpdate(uint32_t howlong) {                      // TODO: Marko check if this makes sensei
+void waitTrigUpdate(uint32_t howlong) {
   uint32_t endMillis = millis() + howlong;
   trigReceived = false ;
-  for ( ; ( (millis()<endMillis) || trigReceived) ; ) 
-      { ; }
+  while( (millis()<endMillis) || trigReceived) {};
   update();
   trigReceived = false ;
 }
@@ -94,17 +98,17 @@ void waitTrigUpdate(uint32_t howlong) {                      // TODO: Marko chec
 // UPDATE ON TRIGGER: should we have trigReceived at the end of the input parsing loop ???
 
 void setLog() {
-  if (LED.all)        { for  (int i = 0 ; i<D_NLS ; i++) { tlc.setlog(i, LED.logVal); } }
-  else                                                   { tlc.setlog(LED.curr, LED.logVal); }
+  if (LED.all)        { for  (int i = 1 ; i<=D_NLS ; i++) { tlc.setlog(       i, LED.logVal); } }
+  else                                                    {  tlc.setlog(LED.curr, LED.logVal); }
   #ifdef TLCUPDATEFORCE
-  update();                                                                         
+  update();
   #endif
   // Serial.printf("setLog All=%i Led=%02i LOG %1.3f\n",LED.all,LED.curr,LED.logVal) ;
 }
 
 void setPwm() {
-  if (LED.all)        { for  (int i = 0 ; i<D_NLS ; i++) { tlc.setpwm(i, LED.pwmVal, "P"); } }
-  else                                                   { tlc.setpwm(LED.curr, LED.pwmVal, "P"); }
+  if (LED.all)        { for  (int i = 1 ; i<=D_NLS ; i++) { tlc.change('P',        i, LED.pwmVal); } }
+  else                                                    { tlc.change('P', LED.curr, LED.pwmVal); }
   #ifdef TLCUPDATEFORCE
   update();                                                                         
   #endif
@@ -112,8 +116,8 @@ void setPwm() {
 }
 
 void setDc() {
-  if (LED.all)        { for  (int i = 0 ; i<D_NLS ; i++) { tlc.setpwm(i, LED.dcVal, "D"); } }
-  else                                                   { tlc.setpwm(LED.curr, LED.dcVal, "D"); }
+  if (LED.all)        { for  (int i = 1 ; i<=D_NLS ; i++) { tlc.change('D',        i, LED.dcVal); } }
+  else                                                    { tlc.change('D', LED.curr, LED.dcVal); }
   #ifdef TLCUPDATEFORCE
   update();                                                                         
   #endif
@@ -121,8 +125,8 @@ void setDc() {
 }
 
 void setBc() {
-  if (LED.all)        { for  (int i = 0 ; i<D_NLS ; i++) { tlc.setpwm(i, LED.bcVal, "B"); } }
-  else                                                   { tlc.setpwm(LED.curr, LED.bcVal, "B"); }
+  if (LED.all)        { for  (int i = 1 ; i<=D_NLS ; i++) { tlc.change('B',        i, LED.bcVal); } }
+  else                                                    { tlc.change('B', LED.curr, LED.bcVal); }
   #ifdef TLCUPDATEFORCE
   update();                                                                         
   #endif
@@ -130,8 +134,8 @@ void setBc() {
 }
 
 void setOe(bool state) {
-  if (state) {    tlc.C_BLANK = 0;  }
-  else       {    tlc.C_BLANK = 1;  }
+  if (state) { tlc.C_BLANK = 0; }
+  else       { tlc.C_BLANK = 1; }
   update();
 }
 
@@ -139,15 +143,15 @@ void setOe(bool state) {
 // TODO: check that we dont mess a write outside the array!, implement copying from current isoLog to a bank
 void storeIso() {
     Serial.printf("Store Led%02i iso log %1.3f ",LED.curr,LED.logVal) ;
-    if (LED.all) 
+    if (LED.all)
       Serial.println("aborted: all leds on, switch to one first") ;
-    else if ((LED.curr<0) && (LED.curr>D_NLS))
+    else if ((LED.curr<0) || (LED.curr>D_NLS))
       Serial.println("aborted: current LED number is impossible") ;
-    else if ((LED.logVal < -1) && (LED.logVal > 4 ))
-      Serial.println("aborted: log value out of range (-1,4)") ;            
+    else if ((LED.logVal < 0) || (LED.logVal > 4 ))
+      Serial.println("aborted: log value out of range [0 to 4]") ;            
     else {
       Serial.println("success") ; 
-      isoLog[isoLogCurr][LED.curr] = LED.logVal ;                       
+      isoLog[isoLogCurr][LED.curr] = LED.logVal;
     }
 }
 
@@ -157,48 +161,58 @@ void mainWelcome() {
   Serial.println( "\n" LEDSYNTHNAME " (built @ " __DATE__ " " __TIME__") has " + String(D_NLS) + " LEDs.\n");
 }
 void mainPrintLeds() {
-  for (int i=0; i<D_NLS; i++) { Serial.printf ("Led %02i %03i nm log %-7.3f \n", i, lambdas [i], isoLog[isoLogCurr][i] ) ; }
+  for (int i=0; i<D_NLS; i++) {
+    Serial.printf ("Led %02i %03i nm log %-7.3f \n",
+    i,
+    lambdas[i],
+    isoLog[isoLogCurr][i] );
+  }
 } // this will also print the 'electric' PWL values 
 
 // PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS
-#include "protocol.h"                                   // TODO this is a part of protocol, consider making an object / library for the protocol builder
 // PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS
+// PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS
+#include "protocol.h"                                   // TODO this is a part of protocol, consider making an object / library for the protocol builder
 
-// SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
+// SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
+// SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
+// SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
   Serial.setTimeout(SERIAL_TIMEOUT);
+
   tlc.begin();                            // TODO: implement a frequency change command!!!!!!!!!!!
-  pinMode(TRIGOUTPIN, OUTPUT);
-  pinMode(ENVELOPEPIN, OUTPUT);
-  pinMode(INFOPIN, OUTPUT);               
-  pinMode(TRIGINPIN, INPUT_PULLUP);       // PULLUP working normally without need for *register stuff: https://forum.pjrc.com/threads/48058-Teensy-3-2-internal-pulldown-and-pullup-resistors
+
+  pinMode(TRIGOUTPIN,   OUTPUT);
+  pinMode(ENVELOPEPIN,  OUTPUT);
+  pinMode(INFOPIN,      OUTPUT);               
+  pinMode(TRIGINPIN,    INPUT_PULLUP);
+
   attachInterrupt(digitalPinToInterrupt(TRIGINPIN), trigInISR, RISING); // interrupt routine to catch the trigIn flag
+
   //EEPROMsave();
   //EEPROMload();
+
   mainWelcome();
 }
 
-// LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
-// LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
-// LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
+// LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
+// LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
+// LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
 void loop() {
   if (Serial.available() > 0) {
     input = Serial.readStringUntil(',');
     change = true;
   }
 
-
   if (trigReceived == true) update() ;              // update on external trigger ???
-
-
 
   // TODO: implement ECHO on / off to switch all printf commands off if needed!
 
   if (change) {
     //----------------------------------------------------------------------------------------------------------------------------- Single line protocols
     // shouldnt this be "else ifs??????"
-    if (input.substring(0, 5) == "reset")              WRITE_RESTART(0x5FA0004);
+    if (     input.substring(0, 5) == "reset")         WRITE_RESTART(0x5FA0004);
     else if (input.substring(0, 5) == "hello")         mainWelcome();
     else if (input.substring(0, 4) == "help")          mainHelp();
     else if (input.substring(0, 4) == "leds")          mainPrintLeds();
@@ -212,48 +226,55 @@ void loop() {
     else if (input.substring(0, 6) == "wiring")        tlc.printMask();
 
     else if (input.substring(0, 5) == "espwm")     {   tlc.C_ESPWM  = constrain(input.substring(5).toInt(),0,1) ; 
-                                                       tlc.C_ESPWM  ? Serial.println("mode ESPWM") : Serial.println("mode PWM");} 
+                                                       tlc.C_ESPWM  ? Serial.println("mode ESPWM") : Serial.println("mode PWM");}
+
     else if (input.substring(0, 5) == "blank")     {   tlc.C_BLANK  = constrain(input.substring(5).toInt(),0,1) ; 
                                                        tlc.C_ESPWM  ? Serial.println("blanking on") : Serial.println("blanking off");} 
+
     else if (input.substring(0, 6) == "tmgrst")    {   tlc.C_TMGRST = constrain(input.substring(6).toInt(),0,1) ; 
                                                        tlc.C_TMGRST ? Serial.println("timing reset on") : Serial.println("timing reset off");} 
+
     else if (input.substring(0, 6) == "dsprpt")    {   tlc.C_DSPRPT = constrain(input.substring(6).toInt(),0,1) ; 
                                                        tlc.C_DSPRPT ? Serial.println("display repeat on") : Serial.println("display repeat off");} 
+
     else if (input.substring(0, 5) == "gsclk")     {   Serial.printf ("GSCLK set to %f MHz\n", tlc.setGSCLK (input.substring(5).toFloat()) ) ; }
-    else if (input.substring(0, 2) == "oe")        {   setOe( 1 ); Serial.println("output on"); }
+
+    else if (input.substring(0, 2) == "oe")        {   setOe( 1 ); Serial.println("output on" ); }
     else if (input.substring(0, 2) == "od")        {   setOe( 0 ); Serial.println("output off"); }
 
     else if (input.substring(0, 1) == "!")            update() ;     // the most important command
-    else if (input.substring(0, 1) == "?")         {  waitTrigUpdate(100) ; }
+    else if (input.substring(0, 1) == "?")         {  waitTrigUpdate(100) ; } // TODO: do we need this?
     else if (input.substring(0, 4) == "wait")      {  waitTrigUpdate(constrain(input.substring(4).toInt(),0,MAXWAITMS)) ; }
+    
     else if (input.substring(0, 3) == "tic")          delay(7) ;     // this is about 1 frame at 150 Hz, TODO should not be hard-coded
     else if (input.substring(0, 3) == "toc")          delay(40);     // this is about 6 frames at 150 Hz, TODO should not be hard-coded
-    else if (input.substring(0, 3) == "del")          delay(constrain(input.substring(3).toInt(),0,1000)) ;
-    else if (input.substring(0, 4) == "trig")         trigOut(TRIGOUTPIN,1) ;
+    else if (input.substring(0, 3) == "del")          delay(constrain(input.substring(3).toInt(),0,1000));
+    
+    else if (input.substring(0, 4) == "trig")         trigOut(TRIGOUTPIN,1);
 
-    else if ((input[0]>='A') & (input[0]<='Z'))    {   LED.curr = constrain ( ( ( input[0]=='Z' ? 0 : input[0]-LED00CHAR ) ),0,D_NLS); 
-                                                       LED.all  = false ;
+    else if ((input[0]>='A') & (input[0]<='Z'))    {   LED.curr = constrain (((input[0]=='Z' ? 0 : input[0]-LED00CHAR)),0,D_NLS);
+                                                       LED.all  = false;
                                                        Serial.printf("Led%02i ",LED.curr); }
     else if (input.substring(0, 3) == "led")       {   LED.curr = constrain (input.substring(3,5).toInt(),0,D_NLS) ; 
-                                                       LED.all  = false ;
+                                                       LED.all  = false;
                                                        Serial.printf("Led%02i ",LED.curr);
                                                    }
-    else if (input.substring(0, 3) == "one")       {   LED.all = false ; 
+    else if (input.substring(0, 3) == "one")       {   LED.all = false;
                                                        Serial.printf("Led%02i ",LED.curr);
                                                    }
-    else if (input.substring(0, 3) == "all")       {   LED.all = true ; 
+    else if (input.substring(0, 3) == "all")       {   LED.all = true;
                                                        Serial.printf("Rainbow ");
                                                    }
     else if (input.substring(0,3)  == "log")       {   LED.logVal = input.substring(3).toFloat() ;
                                                        Serial.printf("@log %1.3f\n",LED.logVal);                                
-                                                       setLog(); 
+                                                       setLog();
                                                    }
     else if (input.substring(0,3)  == "pwm")       {   LED.pwmVal = input.substring(3).toInt() ;
                                                        Serial.printf("@pwm %5i (0x%04x)\n",LED.pwmVal,LED.pwmVal);                                
                                                        setPwm();
                                                    }
     else if (input.substring(0,3)  == "oct")       {  LED.pwmVal = constrain (pow (2, 16-input.substring(3).toFloat()), 0,tlc.MAX_PWM) ;
-                                                      Serial.printf("@pwm %5i (0x%04x)\n",LED.pwmVal,LED.pwmVal);                                
+                                                      Serial.printf("@pwm %5i (0x%04x)\n",LED.pwmVal,LED.pwmVal);
                                                       setPwm();
                                                    }
     else if (input.substring(0,2)  == "dc")        {  LED.dcVal = input.substring(2).toInt() ;
@@ -262,15 +283,15 @@ void loop() {
                                                    }
     else if (input.substring(0, 2) == "bc")        {  LED.bcVal = input.substring(2).toInt() ;  
                                                       Serial.printf("@bc %3i (0x%03x)\n",LED.bcVal,LED.bcVal);                                
-                                                      setBc() ; 
+                                                      setBc() ;
                                                    }    
     else if (input.substring(0,4)  == "full")      {  LED.pwmVal = tlc.MAX_PWM ; LED.dcVal = tlc.MAX_DC; LED.bcVal = tlc.MAX_BC;
                                                       Serial.println("@full ");
-                                                      setDc(); setBc(); setPwm(); 
+                                                      setDc(); setBc(); setPwm();
                                                    }
-    else if (input.substring(0,3)  == "off")       {  LED.pwmVal = 0 ; 
+    else if (input.substring(0,3)  == "off")       {  LED.pwmVal = 0 ;
                                                       Serial.println("@off\n");
-                                                      setPwm(); 
+                                                      setPwm();
                                                    }       
     else if (input.substring(0, 5) == "store")     {  storeIso() ; } // iffy
     else if (input.substring(0, 6) == "update")    {  Serial.println("update not implemented yet.") ; }     // TODO: implement as auto update (no need to use '!')
@@ -281,18 +302,6 @@ void loop() {
     
     change = false;    
   }
-
-
-
-
-
-
-
-
-
-
-
-
 
 /*    if (input.substring(0, 3) == "dir") {
       uint8_t  dir_setCh  = input.substring( 3,  5).toInt();
@@ -331,7 +340,7 @@ void loop() {
 void EEPROMsave() {
   for( int i = 0; i < tlc.nLEDs; i++) {
     EEPROM[i]               = CHmask[i];
-    EEPROM[i + 1*tlc.nLEDs] = pwmVals[i];
+    EEPROM[i + 1*tlc.nLEDs] = isoLog[i];
     EEPROM[i + 2*tlc.nLEDs] = isoDC[i];
   }
   for( int i = 0; i < tlc.nTLCs; i++) {
@@ -342,7 +351,7 @@ void EEPROMsave() {
 void EEPROMload() {
   for( int i = 0; i < tlc.nLEDs; i++) {
     CHmask[i]  = EEPROM[i];
-    pwmVals[i] = EEPROM[i + 1*tlc.nLEDs];
+    isoLog[i] = EEPROM[i + 1*tlc.nLEDs];
     isoDC[i]   = EEPROM[i + 2*tlc.nLEDs];
   }
   for( int i = 0; i < tlc.nTLCs; i++) {
@@ -351,7 +360,7 @@ void EEPROMload() {
 }
 
 void EEPROMpeek() {
-  // print out mask, pwmVals, isodc and isobc
+  // print out mask, isoLog, isodc and isobc
   Serial.println("Peek at stored PWM values, use pwmload to load them to the program.");
   Serial.println("LED PWM   DC  BC");
   for( int i = 0; i < tlc.nLEDs; i++) {
@@ -372,17 +381,17 @@ void readPWMsFromSerial(String input, int lenOfCommand) {
   Serial.println("Changing PWM.");
   for (uint16_t i = lenOfCommand; i < input.length(); i+=stepSize){
     uint8_t led = (i-(lenOfCommand))/stepSize;
-    pwmVals[led] = constrain(input.substring(i, i+stepSize).toInt(), 0, tlc.MAX_PWM);
-    Serial.println("  LED: " + String(led+1) + " at PWM: " + String(pwmVals[led]));
+    isoLog[led] = constrain(input.substring(i, i+stepSize).toInt(), 0, tlc.MAX_PWM);
+    Serial.println("  LED: " + String(led+1) + " at PWM: " + String(isoLog[led]));
   }
   Serial.println("Done");
 }
 
 void getPwm(){                                                                    // TODO: change to report log values, or delete
-  Serial.println("-- PwmVals for all LEDs --------------------------");
+  Serial.println("-- isoLog for all LEDs --------------------------");
   Serial.println("   Format: index/driver/channel/pwm");
   for (uint8_t i = 0; i < D_NLS; i++) {
-    Serial.printf("  %i %i\n\r", i, pwmVals[i]);
+    Serial.printf("  %i %i\n\r", i, isoLog[i]);
   }
   Serial.println("--------------------------------------------------");
 }

@@ -14,7 +14,7 @@ uint16_t p_wait  = 107;
 
 float    genAtt     = 0.0;  // General and adaptational atenuation [log]
 float    adapAtt    = 0.0;
-float    v_f        = -3.6; // V-logI <f>rom, <s>tep and <t>o values [log]
+float    v_f        = 6.0; // V-logI <f>rom, <s>tep and <t>o values [log]
 float    v_s        = 0.3;
 float    v_t        = 0.0;
 
@@ -25,20 +25,20 @@ void set(uint8_t led, int32_t pwmVal) {                                         
   // led    = constrain(led,      0,   tlc.nLEDs);       
   // pwmVal = constrain(pwmVal,   0,   tlc.MAX_PWM);
   /* if (pwmVal < 0) {
-    pwmVal = pwmVals[led] >> (-pwmVal-1) ;   
+    pwmVal = isoLog[led] >> (-pwmVal-1) ;   
     // use ISO values: divide by 1 for -1, divide by 2 for -2, by 4 for -3, ...
   }
   */
-  tlc.setpwm(led, pwmVal, "P");
-  tlc.setpwm(led, isoDC[led], "D");
+  tlc.change('P', led, pwmVal);
+  tlc.change('D', led, isoDC[led]);
   update();                                                                         
 }
 
-void setRainbow (int32_t pwmVal) {                                                      // name used by Protocols, should be setRainbowPWM
-  for (uint8_t i = 0; i < D_NLS; i++){                                                  // TODO: to be removed
-    tlc.setpwm(i, pwmVal, "P");
+void setRainbow (float logVal) {                                                      // TODO: name used by Protocols, should be setRainbowPWM
+  for (uint8_t i = 0; i < D_NLS; i++) {                                                  // TODO: to be removed
+    tlc.setlog(i, logVal);
   }
-  update() ;
+  update();
 }
 
 //--------------------------------------------------------------------------------------- COMPATIBILITY NEDS
@@ -179,7 +179,7 @@ void protMatReport(String inStr) {
   Serial.print(  "p.TOU = "); if (sendTrigOut  ) { Serial.println(" 1;"); } else { Serial.println(" 0;"); }
   
   Serial.print(  "p.PWM = [");
-  for (uint8_t i=0; i < D_NLS; i++) Serial.print(String(pwmVals[i]) + "  ");
+  for (uint8_t i=0; i < D_NLS; i++) Serial.printf("%3.1f ", isoLog[i]);
   Serial.println("];");
   
   Serial.println("%-END_REPORT-");
@@ -188,9 +188,9 @@ void protMatReport(String inStr) {
 void setFromSerial(String command) {
   if (command.substring(0, 3) != "set") { return; }
   
-  if (command.substring(0, 7) == "set a g") {    genAtt = constrain(command.substring(7).toFloat(), MIN_ATT_VALUE, 0);         Serial.println("General attenuation set to: " + String(genAtt) + " log"); }
-  if (command.substring(0, 7) == "set a a") {   adapAtt = constrain(command.substring(7).toFloat(), MIN_ATT_VALUE, 0);         Serial.println("Adaptive attenuation set to: " + String(adapAtt) + " log"); }
-  if (command.substring(0, 7) == "set a b") { N_USEBANK = constrain(command.substring(7).toFloat(), MIN_ATT_VALUE, 0);         Serial.println("Attenuation bank set to: " + String(N_USEBANK)); }
+  if (command.substring(0, 7) == "set a g") {    genAtt = constrain(command.substring(7).toFloat(), 0, MAX_ATT_VALUE);         Serial.println("General attenuation set to: " + String(genAtt) + " log"); }
+  if (command.substring(0, 7) == "set a a") {   adapAtt = constrain(command.substring(7).toFloat(), 0, MAX_ATT_VALUE);         Serial.println("Adaptive attenuation set to: " + String(adapAtt) + " log"); }
+  if (command.substring(0, 7) == "set a b") { N_USEBANK = constrain(command.substring(7).toFloat(), 0, N_MAXBANK);         Serial.println("Attenuation bank set to: " + String(N_USEBANK)); }
 
   if (command.substring(0, 5) == "set o") {       p_ofs = constrain(command.substring(5).toInt(), 0, 86400000);     Serial.println("Offset   [ms]: " + String(p_ofs)); }
   if (command.substring(0, 5) == "set d") {       p_dur = constrain(command.substring(5).toInt(), 0, 86400000);     Serial.println("Duration [ms]: " + String(p_dur)); }
@@ -216,9 +216,9 @@ void setFromSerial(String command) {
   if (command.substring(0, 6) == "set v ") {
     String key = command.substring(6, 7);
     float serVal = command.substring(7).toFloat();
-    if (key == "f") { if (serVal < v_t) { v_f = serVal; } else { Serial.println("Invalid number! FROM must be smaller than TO"); } } // set FROM value
-    if (key == "s") { if (serVal > 0  ) { v_s = serVal; } else { Serial.println("Invalid number! STEP should be bigger than 0."); } } // set STEP value
-    if (key == "t") { if (serVal > v_f) { v_t = serVal; } else { Serial.println("Invalid number! TO must be bigger than FROM"); } } // set  TO  value
+    if (key == "f") { if (serVal > v_t) { v_f = serVal; } else { Serial.println("Invalid number! FROM must be bigger than TO"); } } // set FROM value
+    if (key == "s") { if (serVal > 0  ) { v_s = serVal; } else { Serial.println("Invalid number! STEP should be bigger than 0 (it will be subtracted from FROM to get to TO)."); } } // set STEP value
+    if (key == "t") { if (serVal < v_f) { v_t = serVal; } else { Serial.println("Invalid number! TO must be smaller than FROM"); } } // set  TO  value
 
     protReport( "report" );
   }
@@ -232,7 +232,7 @@ void sweepProtocol(String inStr) {
   Serial.println("SWEEP protocol started, input 'stop' to finish");
   if (waitForTrigIn) Serial.println("    Waiting for external trigger...");
 
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
   chooseLED("f");
   
   if ( nlsUsed(mask) == 0) {
@@ -247,9 +247,9 @@ void sweepProtocol(String inStr) {
         didOfset = true;
       }
 
-      set( LED.curr, pwmVals[LED.curr]*pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
+      tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr] );
       flash(p_dur, sendTrigOut);
-      set( LED.curr, 0 );
+      tlc.setlog( LED.curr, OFF_LOG_VALUE);
 
       delay(p_pau);
 
@@ -280,7 +280,7 @@ void peewsProtocol(String inStr) {
   Serial.println("PEEWS protocol started, input 'stop' to finish");
   if (waitForTrigIn) Serial.println("    Waiting for external trigger...");
 
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
   chooseLED("l");
   
   if ( nlsUsed(mask) == 0) {
@@ -295,9 +295,9 @@ void peewsProtocol(String inStr) {
         didOfset = true;
       }
 
-      set( LED.curr, pwmVals[LED.curr]*pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
+      tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
       flash(p_dur, sendTrigOut);
-      set( LED.curr, 0 );
+      tlc.setlog( LED.curr, OFF_LOG_VALUE );
 
       delay(p_pau);
 
@@ -332,6 +332,7 @@ void vlogiProtocol(String inStr) {
   bool didOfset = false;
   float v_fac = v_f;
 
+  setRainbow(OFF_LOG_VALUE);
   setOe(0); // this prot uses OE to flash
   
   if ( nlsUsed(mask) == 0) {
@@ -339,7 +340,7 @@ void vlogiProtocol(String inStr) {
     command = "stop";
   }
   
-  while (command.substring(0, 4) != "stop" and !endVlogi) {
+  while (command.substring(0, 4) != "stop" && !endVlogi) {
     if ((waitForTrigIn and trigReceived) or !waitForTrigIn) {
       Serial.printf("Vlogi: %2d LEDS at %5.2f log \n", nlsUsed(mask), v_fac);
       if (waitForTrigIn && !didOfset) {
@@ -348,15 +349,17 @@ void vlogiProtocol(String inStr) {
       }
 
       for (int i = 0; i < D_NLS; i++) {
-        set( i, pow(10, v_fac+genAtt+Ibanks[N_USEBANK][i]) * mask[i] * pwmVals[i]);
+        if (mask[i]) {
+          tlc.setlog(i, v_fac+genAtt+Ibanks[N_USEBANK][i]+isoLog[N_USEBANK][i]);
+        }
       }
 
       flash(p_dur, sendTrigOut);
       delay(p_pau);
 
-      v_fac += v_s;
+      v_fac -= v_s;
 
-      if (v_fac > (v_t + 0.01) ){
+      if (v_fac < (v_t - 0.01) ){
         v_fac = v_f;
         delay(p_wait);
         trigReceived = false;
@@ -370,20 +373,20 @@ void vlogiProtocol(String inStr) {
     }
   }
 
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
 } // end vlogiProtocol
 
 void rampProtocol(String inStr) {
   if (inStr.substring(0, 4) != "ramp") { return; }
   bool didOfset = false;
 
-  int32_t t_ramp_pwm = 0; // temp pwm holder to omit sending out flashes if LED already did its best (preserve the cell)
+  int32_t t_ramp_log = 0; // temp pwm holder to omit sending out flashes if LED already did its best (preserve the cell)
   
   Serial.println("RAMP protocol started, input 'stop' to finish");
   if (waitForTrigIn) Serial.println("    Waiting for external trigger...");
 
   setOe(0);
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
   float v_fac = v_f;
   
   if ( nlsUsed(mask) == 0) {
@@ -402,17 +405,17 @@ void rampProtocol(String inStr) {
       
       Serial.println("Ramp: Led " + String(LED.curr) + " at " + String(v_fac) + " log of iso intensity.");
 
-      t_ramp_pwm = pow(10, v_fac+genAtt+Ibanks[N_USEBANK][LED.curr]) * mask[LED.curr] * pwmVals[LED.curr];
+      t_ramp_log = v_fac+genAtt+Ibanks[N_USEBANK][LED.curr]+isoLog[N_USEBANK][LED.curr]; // TODO: this will not work as it expects a pwm value, thanks LOGs!
 
-      if (t_ramp_pwm > tlc.MAX_PWM) t_ramp_pwm = 0;
+      if (t_ramp_log < 0) t_ramp_log = OFF_LOG_VALUE; // turn blinking off as we already tested the max possible output in this ramp
 
-      set( LED.curr, t_ramp_pwm);
+      tlc.setlog(LED.curr, t_ramp_log);
       flash(p_dur);
-      set( LED.curr, 0 );
+      tlc.setlog(LED.curr, OFF_LOG_VALUE);
       delay(p_pau);
 
-      v_fac += v_s;
-      if (v_fac > (v_t + 0.01) ) {
+      v_fac -= v_s;
+      if (v_fac < (v_t - 0.01) ) {
         trigReceived = false;
         didOfset = false;
         v_fac = v_f;
@@ -428,7 +431,7 @@ void rampProtocol(String inStr) {
   }
 
   Serial.println("RAMP protocol finished.");
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
   protReport( "report" );
 } // end rampProtocol
 
@@ -436,12 +439,14 @@ void blinkProtocol(String inStr) {
   if (inStr.substring(0, 5) != "blink") { return; }
   
   protReport( "report" );
-  Serial.println("BLINK protocol with white light started, input 'stop' to finish");
+  Serial.println("BLINK protocol with ISO light started, input 'stop' to finish");
   if (waitForTrigIn) Serial.println("    Waiting for external trigger...");
 
   setOe(0);
   for (int i = 0; i < D_NLS; i++) {
-    set( i, pow(10, genAtt+Ibanks[N_USEBANK][i]) * mask[i] * pwmVals[i]);
+    if (mask[i]) {
+      tlc.setlog(i, Ibanks[N_USEBANK][i]+genAtt+isoLog[N_USEBANK][i]);
+    }
   }
   
   while (command.substring(0, 4) != "stop") {
@@ -459,7 +464,7 @@ void blinkProtocol(String inStr) {
     }
   }
 
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
   protReport( "report" );
 } // end blinkProtocol
 
@@ -468,12 +473,14 @@ void adapProtocol(String inStr) {
   
   bool didOfset = false;
 
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
   setOe(1);
   chooseLED("f");
 
   for (int i = 1; i < D_NLS; i++) {
-    set( i, pwmVals[i] * pow(10, adapAtt+Ibanks[N_USEBANK][i]) * adapMask[i]);
+    if( adapMask[i] ){
+      tlc.setlog(i, isoLog[N_USEBANK][i]+adapAtt+Ibanks[N_USEBANK][i]);
+    }
   }
   
   protReport( "report" );
@@ -494,10 +501,16 @@ void adapProtocol(String inStr) {
         didOfset = true;
       }
 
-      set( LED.curr, pwmVals[LED.curr] * pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
+      tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
       envelope(1);
       delay(p_dur);
-      set( LED.curr, pwmVals[LED.curr] * pow(10, adapAtt+Ibanks[N_USEBANK][LED.curr]) * adapMask[LED.curr]);
+      if ( adapMask[LED.curr] ) {
+        tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+adapAtt+Ibanks[N_USEBANK][LED.curr]);
+      }
+      else {
+        tlc.setlog( LED.curr, OFF_LOG_VALUE );
+      }
+      
       envelope(0);
       delay(p_pau);
 
@@ -517,82 +530,10 @@ void adapProtocol(String inStr) {
     }
   }
   
-  setRainbow(0);
+  setRainbow(OFF_LOG_VALUE);
   setOe(0);
   protReport( "report" );
 } // end adapProtocol
-
-void singleLEDadapProtocol(String inStr) {
-  if (inStr.substring(0, 10) != "singleAdap") { return; }
-  
-  protActive = true;
-  bool didOfset = false;
-  protReport( "report" );
-  Serial.println("SINGLE LED ADAP protocol started, input 'stop' to finish");
-  if (waitForTrigIn) Serial.println("    Waiting for external trigger...");
-
-  setRainbow(0);
-  setOe(1);
-  chooseLED("f");
-  int a = 0;
-  
-  if ( (nlsUsed(mask)*nlsUsed(adapMask)) == 0 ) {
-    Serial.println("No LEDs selected, can't run the protocol");
-    command = "stop";
-  }
-  
-  while (command.substring(0, 4) != "stop") {
-    if ((waitForTrigIn && trigReceived) || !waitForTrigIn) {
-      if (!didOfset) {
-        didOfset = true;
-        
-        delay(p_ofs/2);
-        set( a, pwmVals[a]*pow(10, adapAtt+Ibanks[N_USEBANK][a]) );
-        delay(p_ofs/2);
-      }
-
-      if (sendTrigOut) trigOut(TRIGOUTPIN, D_TRIGOUTLEN);
-
-      set( LED.curr, pwmVals[LED.curr]*pow(10, genAtt+Ibanks[N_USEBANK][LED.curr]) );
-      envelope(1);
-      delay(p_dur);
-      if ( LED.curr == a) { set( LED.curr, pwmVals[a]*pow(10, adapAtt+Ibanks[N_USEBANK][a]) ); }
-      else {                set( LED.curr, 0 ); }
-      envelope(0);
-      delay(p_pau);
-
-      chooseLED("n");
-
-      if (LED.wrapped) {
-        chooseLED("f"); // this also resets the LED.wrapped bool
-        trigReceived = false;
-        didOfset = false;
-
-        delay(p_wait/2); // wait a bit before turning adap LED off
-        set( a, 0);
-        delay(p_wait/2);
-
-        do {
-          a++;
-          if (a == D_NLS) {
-            command = "stop";
-            setOe(0);
-          }
-        } while(adapMask[a] == 0);
-      }
-    }
-    
-    if (Serial.available() > 0) {
-      command = Serial.readStringUntil('*');
-      setFromSerial(command);
-    }
-  }
-
-  setRainbow(0);
-  setOe(0);
-  protActive = false;
-  protReport( "report" );
-} // end singleLEDadapProtocol
 
 void protocolEnvironment() {
   Serial.println(" _______  ______    _______  _______  _______  _______  _______  ___        _______  __   __  ___   ___      ______   _______  ______   ");
@@ -609,7 +550,7 @@ void protocolEnvironment() {
   command = "";
   change = false;
   setOe(0);
-  setRainbow(0); // update this name
+  setRainbow(OFF_LOG_VALUE); // update this name
 
   protReport( "report" );
 
@@ -626,13 +567,13 @@ void protocolEnvironment() {
       protMatReport( command );
       protHelp( command );
       setFromSerial( command );
+
       sweepProtocol( command );
       peewsProtocol( command );
       vlogiProtocol( command );
       rampProtocol ( command );
       blinkProtocol( command );
       adapProtocol ( command );
-      singleLEDadapProtocol ( command );
     }
 
     trigReceived = false;

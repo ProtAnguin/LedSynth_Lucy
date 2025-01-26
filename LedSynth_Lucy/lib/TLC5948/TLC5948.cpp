@@ -61,8 +61,7 @@ void TLC5948::begin() {
 // https://forum.pjrc.com/index.php?threads/using-teensy-4-1-to-generate-square-wave-at-precise-frequency.75798/
 
 
-float TLC5948::setGSCLK( float frequency )                                       
-{
+float TLC5948::setGSCLK( float frequency ) {
   float f = constrain ( frequency , _GSCLK_MIN_MHZ, _GSCLK_MAX_MHZ ) ;
   pinMode(_GS_PIN, OUTPUT);
   analogWrite(_GS_PIN, 0) ;
@@ -269,7 +268,7 @@ void TLC5948::makeControlValues() {
 }
 
 
-void TLC5948::setpwm(uint8_t LEDn, uint32_t setValue, String setWhat) {                  // TODO: change String setWhat to char, as only one char used!
+void TLC5948::change(char changeWhatChar, uint8_t LEDn, uint32_t setValue) {
   // use mask and populate --> cpwm cDC and cBC
 
   int tDRI; // temp driver value
@@ -278,85 +277,91 @@ void TLC5948::setpwm(uint8_t LEDn, uint32_t setValue, String setWhat) {         
   // Check if LEDn is in usable range
   if(LEDn < 0 || LEDn >= nLEDs) return;
 
-  const char* setWhatCStr = setWhat.c_str();
-
   tMASK = mask[LEDn];
   tDRI  = tMASK >> 16; // take the upper bits for driver
  
-  if (strcmp(setWhatCStr, "P") == 0) {
-    for (int i = 0; i < nch; i++) {
-      if ((tMASK >> i) & 1) { // if bit in mask is 1
-        // _PWM_MIN_VAL is used to avoid stimulus flicker at low PWM (ie set to 4 to keep the ESPWM at 4x the update freq)
-        // if below the _PWM_MIN_VAL set to 0 to turn diode off
-        if (setValue < _PWM_MIN_VAL) {
-          setValue = 0;
+  switch(changeWhatChar) {
+    case 'P': // Update PWM values
+      for (int i = 0; i < nch; i++) {
+        if ((tMASK >> i) & 1) { // if bit in mask is 1
+          // _PWM_MIN_VAL is used to avoid stimulus flicker at low PWM (ie set to 4 to keep the ESPWM at 4x the update freq)
+          // if below the _PWM_MIN_VAL set to 0 to turn diode off
+          if (setValue < _PWM_MIN_VAL) {
+            setValue = 0;
+          }
+          cpwm[i + tDRI * nch] = constrain(setValue, (uint32_t)0, _PWM_MAX_VAL); // update pwm value
         }
-        cpwm[i + tDRI * nch] = constrain(setValue, (uint32_t)0, _PWM_MAX_VAL); // update pwm value
       }
-    }
-  } else if (strcmp(setWhatCStr, "D") == 0) {
-    for (int i = 0; i < nch; i++) {
-      if ((tMASK >> i) & 1) { // if bit is 1
-        cDC[i + tDRI * nch] = constrain(setValue, _DC_MIN_VAL, _DC_MAX_VAL); // update Dot Correction value
+      break;
+
+    case 'D': // Update Dot Correction values
+      for (int i = 0; i < nch; i++) {
+        if ((tMASK >> i) & 1) { // if bit is 1
+          cDC[i + tDRI * nch] = constrain(setValue, _DC_MIN_VAL, _DC_MAX_VAL); // update Dot Correction value
+        }
       }
-    }
-  } else if (strcmp(setWhatCStr, "B") == 0) {
-    cBC[tDRI] = constrain(setValue,  _BC_MIN_VAL,  _BC_MAX_VAL); // update Brightness Control value
+      break;
+
+    case 'B': // Update Brightness Control values
+      cBC[tDRI] = constrain(setValue,  _BC_MIN_VAL,  _BC_MAX_VAL); // update Brightness Control value
+      break;
   }
 };
 
 void TLC5948::setlog(uint8_t LEDn, float logi) {
-
   // Check if LEDn is in usable range
-  if(LEDn < 0 || LEDn >= nLEDs) return;
+  if(LEDn < 0 || LEDn > nLEDs) return;
 
   uint32_t tMASK = mask[LEDn];
   int tDRI  = tMASK >> 16; // take the upper bits for driver
+  int8_t goalIndex = 0;
 
-  uint8_t thisledch = __builtin_popcount(tMASK & 0xFFFF) ;
+  uint8_t thisledch = __builtin_popcount(tMASK & 0xFFFF) ; // get numer of channels
 
-  // override: all leds with 1 channel only; TODO: implement negative values
-  thisledch=1;
-  uint32_t t = TLC5948::logi2pwm (logi,thisledch)  ;
+  uint32_t t = logi2pwm (logi,thisledch); // get settings for channels
   
   uint8_t  out_mode   = (t>>29) & 0x0007 ;
   uint8_t  out_nchon  = (t>>24) & 0x001f ;
   uint8_t  out_dc     = (t>>16) & 0x007f ;
-  uint16_t out_pwm    =  t      & 0xffff ; 
+  uint16_t out_pwm    =  t      & 0xffff ;
 
-  if (debugTLCflag) 
-  { Serial.printf ("logi=%7.3f, led=%02i, nch=%02i -> on=%02i, pwm=%05i, dc=%03i, mode=%1i. ", 
-                                     logi, LEDn, thisledch, out_nchon, out_pwm, out_dc, out_mode) ;
+  if (debugTLCflag) {
+    Serial.printf ("logi=%7.3f, led=%02i, nch=%02i -> on=%02i, pwm=%05i, dc=%03i, mode=%1i. ", 
+      logi,
+      LEDn,
+      thisledch,
+      out_nchon,
+      out_pwm,
+      out_dc,
+      out_mode) ;
   }
 
   // SET PWM & DC
-    for (int i = 0; i < nch; i++) {
-      if ((tMASK >> i) & 1)  // if bit in mask is 1
-      {
-        if (out_nchon>0)
-        { 
-            cpwm[i + tDRI * nch] = _PWM_MAX_VAL; // max PWM
-            cDC[i + tDRI * nch]  = _DC_MAX_VAL;  // max DC
-            out_nchon--;
-            if (debugTLCflag) Serial.printf("2") ;
-        }
-        else if (out_pwm>0)
-        {
-            cpwm[i + tDRI * nch] = out_pwm; // update pwm value
-            cDC[i + tDRI * nch]  = out_dc;  // update Dot Correction value     
-            out_pwm = 0 ;
-            if (debugTLCflag) Serial.printf("1") ;
-        }
-        else
-        {
-            cpwm[i + tDRI * nch] = 0; 
-            cDC[i + tDRI * nch]  = 0; 
-            if (debugTLCflag) Serial.printf("0") ;
-        }
-        // not touching global BC for now
+  for (int i = 0; i < nch; i++) {
+    goalIndex = i + tDRI * nch;
+    
+    if ((tMASK >> i) & 1) { // if bit in mask is 1
+      if (out_nchon>0) {
+        out_nchon--;
+        cpwm[goalIndex] = _PWM_MAX_VAL; // max PWM
+          cDC[goalIndex] = _DC_MAX_VAL;  // max DC
+        if (debugTLCflag) Serial.printf("2") ;
       }
+      else if (out_pwm>0) {
+        cpwm[goalIndex] = out_pwm; // update pwm value
+          cDC[goalIndex] = out_dc;  // update Dot Correction value
+        out_pwm = 0;
+        if (debugTLCflag) Serial.printf("1") ;
+      }
+      else {
+        cpwm[goalIndex] = 0;
+          cDC[goalIndex] = 0;
+        if (debugTLCflag) Serial.printf("0") ;
+      }
+      // not touching global BC for now
     }
-    if (debugTLCflag) Serial.printf("\n") ;
+  }
+  if (debugTLCflag) Serial.printf("\n") ;
 }
 
 

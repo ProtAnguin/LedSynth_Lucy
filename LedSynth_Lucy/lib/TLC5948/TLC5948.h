@@ -56,7 +56,7 @@ class TLC5948 {
     void sendFramesSPI();
     void printFrames();
     String int16toStr(uint16_t var);
-    void setpwm(uint8_t LEDn, uint32_t setValue, String setWhat);
+    void change(char changeWhatChar, uint8_t LEDn, uint32_t setValue);
     void setlog(uint8_t LEDn, float logi);
     void printCPWM();
     void printMask();
@@ -87,20 +87,11 @@ class TLC5948 {
     uint8_t   _BC_MIN_VAL = 0;
     uint8_t   _BC_MAX_VAL = MAX_BC;
 
-    float _GOAL_GSCLK_MHZ = 10; // Gray scale closk speed in Hz (10 MHz clock gives 152 Hz repeat, with PWM > 4 it brings it up to 600 Hz)
+    float _GOAL_GSCLK_MHZ = 10; // Gray scale closk speed in MHz (10 MHz clock gives 152 Hz repeat, with PWM > 4 it brings it up to 600 Hz)
     float _GSCLK_MIN_MHZ = 1 ;
     float _GSCLK_MAX_MHZ = 14.2 ;                  // PROLLY NUT NECESSARY TO HAVE THESE AS VARIABLES?
 
     SPISettings _SPIset;
 };
-
-
-
-
-
-
-
-
-
 
 #endif // ifndef TLC5948_LIB_H
