@@ -17,12 +17,12 @@ void setCalibFromSerial(String command) {
   if (command.substring(0, 3) != "set") { return; }
   
   if (command.substring(0, 6) == "set l ") {
-		LED.curr = constrain (input.substring(6,8).toInt(),0,D_NLS);
+		LED.curr = constrain (command.substring(6,8).toInt(),0,D_NLS);
 		LED.all  = false;
 		Serial.printf("Calib led%02i \n",LED.curr);
   }
 	if (command.substring(0, 6) == "set a ") {
-		LED.logVal = input.substring(6).toFloat();
+		LED.logVal = command.substring(6).toFloat();
 		Serial.printf("@att %1.3f\n",LED.logVal);
 		setLog();
   }
@@ -32,16 +32,46 @@ void setCalibFromSerial(String command) {
 void calibGo(String command) {
 	if (command.substring(0, 2) != "go") { return; }
 
-	tlc.update(); // this will turn on the LED
+  setRainbow(OFF_LOG_VALUE);
+  tlc.setlog( LED.curr, LED.logVal );
 
+  Serial.printf("%2d,", LED.curr);
+  setOe(1);
 	// OPT measure and report for the first implementation
-	delay(200); // give OPT time to measure
-	lux = opt.getLux();
-	
-  Serial.printf("LED %02i  LOG %1.3f  LUX %7d\n", LED.curr, LED.logVal, lux);
+	for(int i = 0; i<1; i++) {
+    delay(1200); // give OPT time to measure
+	  lux = opt.getLux();
+    Serial.printf("%7d,", lux);
+  }
+	setOe(0);
 
-	// turn LEDs off
-	setRainbow(OFF_LOG_VALUE);
+  Serial.printf(" LED %02i  LOG %1.3f  LUX %7d\n", LED.curr, LED.logVal, lux);
+}
+
+void calibRun(String command) {
+	if (command.substring(0, 3) != "run") { return; }
+  
+  setRainbow(OFF_LOG_VALUE);
+  setOe(1);
+  for (int j = 0; j < 10; j++) { // dekaLOG values (will be divided by 10.0 later)
+    LED.logVal = j/10.0;
+    Serial.printf("%1.3f,", LED.logVal);
+
+    for (int i = 1; i < D_NLS; i++) { // curr led index
+      LED.curr = i;
+
+      tlc.setlog( LED.curr, LED.logVal );
+      tlc.update();
+      delay(1000);
+      lux = opt.getLux();
+      setRainbow(OFF_LOG_VALUE);
+      
+      Serial.printf("%7d,", lux);
+    }
+
+    Serial.println(); // go to new line boy!
+  }
+  setOe(0);
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------- CALIB ENVIRONMENT MAIN
@@ -59,8 +89,6 @@ void calibEnvironment() {
   setOe(0);
   setRainbow(OFF_LOG_VALUE); // update this name
 
-  protReport( "report" );
-
   while (command != "exit") {
     if (Serial.available() > 0) {
       command = Serial.readStringUntil('*');
@@ -72,6 +100,7 @@ void calibEnvironment() {
       
       setCalibFromSerial( command );
 			calibGo( command );
+      calibRun( command );
 
 			calibHelp( command );
     }

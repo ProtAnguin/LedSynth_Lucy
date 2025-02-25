@@ -194,10 +194,11 @@ void setup() {
   tlc.begin();                            // TODO: implement a frequency change command!!!!!!!!!!!
 
   Wire.begin();
+
   opt.begin();
   opt.setBasicSetup();
   opt.setRange(RANGE_AUTO);
-  opt.setConversionTime(CONVERSION_TIME_200MS);
+  opt.setConversionTime(CONVERSION_TIME_100MS);
   opt.setOperationMode(OPERATION_MODE_CONTINUOUS);
 
   pinMode(TRIGOUTPIN,   OUTPUT);
