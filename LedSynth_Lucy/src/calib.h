@@ -35,8 +35,9 @@ void calibGo(String command) {
 	tlc.update(); // this will turn on the LED
 
 	// OPT measure and report for the first implementation
-	delay(4 * 200); // give OPT time to measure
+	delay(200); // give OPT time to measure
 	lux = opt.getLux();
+	
   Serial.printf("LED %02i  LOG %1.3f  LUX %7d\n", LED.curr, LED.logVal, lux);
 
 	// turn LEDs off
