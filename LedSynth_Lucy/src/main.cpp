@@ -57,6 +57,9 @@ NOTE: USING '!' for update
 #include <Arduino.h>
 #include <TLC5948.h>
 #include <EEPROM.h>
+#include "SparkFun_OPT4048.h"
+#include <Wire.h>
+
 #include "Lucy.h"
 #include "easter.h"
 
@@ -64,6 +67,8 @@ String input = "help";   //used for storing incoming strings, set to <prot> to g
 String command = ""; // used to store the command that the user sends via Serial port (empty at Init)
 
 TLC5948 tlc(D_nTLCs, D_NLS, CHmask);
+
+SparkFun_OPT4048 opt;
 
 bool trigReceived   = false;
 void trigInISR() {
@@ -99,7 +104,7 @@ void waitTrigUpdate(uint32_t howlong) {
 
 void setLog() {
   if (LED.all)        { for  (int i = 1 ; i<=D_NLS ; i++) { tlc.setlog(       i, LED.logVal); } }
-  else                                                    {  tlc.setlog(LED.curr, LED.logVal); }
+  else                                                    { tlc.setlog(LED.curr, LED.logVal); }
   #ifdef TLCUPDATEFORCE
   update();
   #endif
@@ -174,6 +179,11 @@ void mainPrintLeds() {
 // PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS
 #include "protocol.h"                                   // TODO this is a part of protocol, consider making an object / library for the protocol builder
 
+// CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB
+// CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB
+// CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB
+#include "calib.h"
+
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
@@ -182,6 +192,13 @@ void setup() {
   Serial.setTimeout(SERIAL_TIMEOUT);
 
   tlc.begin();                            // TODO: implement a frequency change command!!!!!!!!!!!
+
+  Wire.begin();
+  opt.begin();
+  opt.setBasicSetup();
+  opt.setRange(RANGE_AUTO);
+  opt.setConversionTime(CONVERSION_TIME_200MS);
+  opt.setOperationMode(OPERATION_MODE_CONTINUOUS);
 
   pinMode(TRIGOUTPIN,   OUTPUT);
   pinMode(ENVELOPEPIN,  OUTPUT);
@@ -217,6 +234,7 @@ void loop() {
     else if (input.substring(0, 4) == "help")          mainHelp();
     else if (input.substring(0, 4) == "leds")          mainPrintLeds();
     else if (input.substring(0, 4) == "prot")          protocolEnvironment();
+    else if (input.substring(0, 6) == "calib")         calibEnvironment();
     else if (input.substring(0, 7) == "version")       plotEaster(TextSignature, 1, TextSignature_h, TextSignature_w);       
     else if (input.substring(0, 6) == "sensei")        plotEaster(easter, 1, easter_h, easter_w);
     else if (input.substring(0, 6) == "debug1")        tlc.debugTLCflag = !tlc.debugTLCflag;

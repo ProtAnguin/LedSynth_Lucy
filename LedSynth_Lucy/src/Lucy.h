@@ -24,7 +24,6 @@
 #define LED00CHAR             '@'                                   // ASCII goes from 40... '@ABCD...'
 #define MAXWAITMS             10000                                 // how long to wait for the trigger in
 
-
 // Defines so the device can do a self reset
 #define RESTART_ADDR 0xE000ED0C
 #define READ_RESTART() (*(volatile uint32_t *)RESTART_ADDR)
