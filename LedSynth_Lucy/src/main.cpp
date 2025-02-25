@@ -201,7 +201,7 @@ void setup() {
 // LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
 void loop() {
   if (Serial.available() > 0) {
-    input = Serial.readStringUntil(',');
+    input = Serial.readStringUntil('*');
     change = true;
   }
 
@@ -229,7 +229,7 @@ void loop() {
                                                        tlc.C_ESPWM  ? Serial.println("mode ESPWM") : Serial.println("mode PWM");}
 
     else if (input.substring(0, 5) == "blank")     {   tlc.C_BLANK  = constrain(input.substring(5).toInt(),0,1) ; 
-                                                       tlc.C_ESPWM  ? Serial.println("blanking on") : Serial.println("blanking off");} 
+                                                       tlc.C_BLANK  ? Serial.println("blanking on") : Serial.println("blanking off");} 
 
     else if (input.substring(0, 6) == "tmgrst")    {   tlc.C_TMGRST = constrain(input.substring(6).toInt(),0,1) ; 
                                                        tlc.C_TMGRST ? Serial.println("timing reset on") : Serial.println("timing reset off");} 
@@ -265,6 +265,13 @@ void loop() {
     else if (input.substring(0, 3) == "all")       {   LED.all = true;
                                                        Serial.printf("Rainbow ");
                                                    }
+    else if (input.substring(0, 3) == "set")       {   LED.all = false;
+                                                       LED.curr = constrain (input.substring(3,5).toInt(),0,D_NLS);
+                                                       LED.logVal = (input.substring(5, 9).toInt())/1000.0;
+                                                       setLog();
+                                                       Serial.printf("@log %1.3f\n",LED.logVal);
+                                                       update();     // the most important command
+                                                   } 
     else if (input.substring(0,3)  == "log")       {   LED.logVal = input.substring(3).toFloat() ;
                                                        Serial.printf("@log %1.3f\n",LED.logVal);                                
                                                        setLog();

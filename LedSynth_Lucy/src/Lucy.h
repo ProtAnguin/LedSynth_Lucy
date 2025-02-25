@@ -46,7 +46,7 @@ struct selectedLED {
 
 uint32_t CHmask[D_NLS] = {   // Channel mask
   //DDLLLLLLLLLLLLLLLL     binary for driver (bits 17+) and LED mask (bits 1-16) this means that one LED must be connected to a single TLC, which is electrically sensible
-  0b110000000000000000, // ZeroOrder
+  0b110000000000000000, // ZeroOrder              // TODO: why is this addressing TLC number 3 (fourth chip, does not actually exist?)
   0b001110000000000000, // LED  1    3 ch   xxx
   0b000001111110000000, // LED  2    6 ch   xxxxxx
   0b000000000001100000, // LED  3    2 ch   xx
