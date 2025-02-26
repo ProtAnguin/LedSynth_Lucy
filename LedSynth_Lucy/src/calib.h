@@ -6,10 +6,15 @@ void calibHelp(String inStr) {
   if (inStr.substring(0, 4) != "help" ) { return; }
   
   Serial.println("- CALIB  PROT ----------------------------------------------------------------------------------------");
-  Serial.println("  Input 'exit' to exit the Protocol builder");
-  Serial.println("  Input 'help' to see this again");
+  Serial.println("  'exit' to exit the Protocol builder");
+  Serial.println("  'help' to see this again");
+  Serial.println("");
+  Serial.println("  'set l X' to set the LED");
+  Serial.println("  'set a X.XX' to set the attenuation (1 = 10%)");
+  Serial.println("");
+  Serial.println("  'go' to set the LED at attenuation");
+  Serial.println("  'run' predefined protocol with every LED at attenuation steps, produces CSV");
   Serial.println("------------------------------------------------------------------------------------------------ END -");
-
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------- SET CALIB FROM SERIAL
@@ -107,5 +112,5 @@ void calibEnvironment() {
 
     trigReceived = false;
   }
-  Serial.println("Closed Protocol builder");
+  Serial.println("Closed CALIB environment");
 }

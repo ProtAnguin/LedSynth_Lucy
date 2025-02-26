@@ -66,7 +66,7 @@ class TLC5948 {
 
   private:
     const uint16_t _initPWM     = 0;
-    const uint16_t _initDC      = 0;
+    const uint16_t _initDC      = 127;
     const uint16_t _initBC      = 127;
 
     int _nRelevantBits;
