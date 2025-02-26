@@ -1,6 +1,28 @@
 // ------------------------------------------------------------------------------------------------------------------------------- VARIABLES
 uint32_t OPTwhite;
 
+float OPTcalibValues[D_NLS] = {
+  1.963336,
+  1.381317,
+  1.445040,
+  1.136919,
+  1.072260,
+  1.000000,
+  1.017518,
+  1.040798,
+  1.050615,
+  1.103912,
+  1.232097,
+  1.354838,
+  1.524902,
+  1.765031,
+  1.981606,
+  2.170910,
+  2.420246,
+  2.512058,
+  2.643808
+};
+
 // ------------------------------------------------------------------------------------------------------------------------------- CALIB HELP
 void calibHelp(String inStr) {
   if (inStr.substring(0, 4) != "help" ) { return; }
@@ -43,8 +65,8 @@ void calibGo(String command) {
   Serial.printf("%2d,", LED.curr);
   setOe(1);
 	// OPT measure and report for the first implementation
-	for(int i = 0; i<6; i++) {
-    delay(200); // give OPT time to measure
+	for(int i = 0; i<8; i++) {
+    delay(100); // give OPT time to measure
 	  OPTwhite = opt.getADCCh3();
     Serial.printf("%11d,", OPTwhite);
   }
@@ -58,16 +80,16 @@ void calibRun(String command) {
   
   setRainbow(OFF_LOG_VALUE);
   setOe(1);
-  for (int j = 0; j < 10; j++) { // dekaLOG values (will be divided by 10.0 later)
+  for (int j = 0; j < 60; j++) { // dekaLOG values (will be divided by 10.0 later)
     LED.logVal = j/10.0;
     Serial.printf("%1.3f,", LED.logVal);
 
-    for (int i = 1; i < D_NLS; i++) { // curr led index
+    for (int i = 0; i < D_NLS; i++) { // curr led index
       LED.curr = i;
 
       tlc.setlog( LED.curr, LED.logVal );
       tlc.update();
-      delay(1000);
+      delay(900);
       OPTwhite = opt.getADCCh3();
       setRainbow(OFF_LOG_VALUE);
       
@@ -78,6 +100,9 @@ void calibRun(String command) {
   }
   setOe(0);
 }
+
+// calib function
+
 
 // ------------------------------------------------------------------------------------------------------------------------------- CALIB ENVIRONMENT MAIN
 // ------------------------------------------------------------------------------------------------------------------------------- CALIB ENVIRONMENT MAIN
