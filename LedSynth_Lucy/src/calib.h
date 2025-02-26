@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------------------------------------------------------------- VARIABLES
-uint32_t lux;
+uint32_t OPTwhite;
 
 // ------------------------------------------------------------------------------------------------------------------------------- CALIB HELP
 void calibHelp(String inStr) {
@@ -43,14 +43,14 @@ void calibGo(String command) {
   Serial.printf("%2d,", LED.curr);
   setOe(1);
 	// OPT measure and report for the first implementation
-	for(int i = 0; i<1; i++) {
-    delay(1200); // give OPT time to measure
-	  lux = opt.getLux();
-    Serial.printf("%7d,", lux);
+	for(int i = 0; i<6; i++) {
+    delay(200); // give OPT time to measure
+	  OPTwhite = opt.getADCCh3();
+    Serial.printf("%11d,", OPTwhite);
   }
 	setOe(0);
 
-  Serial.printf(" LED %02i  LOG %1.3f  LUX %7d\n", LED.curr, LED.logVal, lux);
+  Serial.printf(" LED %02i  LOG %1.3f  WHITE %11d\n", LED.curr, LED.logVal, OPTwhite);
 }
 
 void calibRun(String command) {
@@ -68,10 +68,10 @@ void calibRun(String command) {
       tlc.setlog( LED.curr, LED.logVal );
       tlc.update();
       delay(1000);
-      lux = opt.getLux();
+      OPTwhite = opt.getADCCh3();
       setRainbow(OFF_LOG_VALUE);
       
-      Serial.printf("%7d,", lux);
+      Serial.printf("%11d,", OPTwhite);
     }
 
     Serial.println(); // go to new line boy!
