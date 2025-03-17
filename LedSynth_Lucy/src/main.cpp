@@ -56,12 +56,12 @@ NOTE: USING '!' for update
 
 #include <Arduino.h>
 #include <TLC5948.h>
-#include <EEPROM.h>
 #include "SparkFun_OPT4048.h"
 #include <Wire.h>
 
 #include "Lucy.h"
 #include "easter.h"
+#include "storeDataToEEPROM.h"
 
 String input = "help";   //used for storing incoming strings, set to <prot> to go into ProtocolBuilder on startup
 String command = ""; // used to store the command that the user sends via Serial port (empty at Init)
@@ -211,6 +211,8 @@ void setup() {
   //EEPROMsave();
   //EEPROMload();
 
+  loadFromEEPROM();  // Load stored data into isoLog
+
   mainWelcome();
 }
 
@@ -321,104 +323,13 @@ void loop() {
                                                    }       
     else if (input.substring(0, 5) == "store")     {  storeIso() ; } // iffy
     else if (input.substring(0, 6) == "update")    {  Serial.println("update not implemented yet.") ; }     // TODO: implement as auto update (no need to use '!')
-    else if (input.substring(0, 4) == "bank")      {  Serial.println("bank not implemented yet.") ; }
+    else if (input.substring(0, 4) == "bank")      {  isoLogCurr  = constrain(input.substring(4).toInt(),0,N_ISOBANKS-1);
+                                                      Serial.printf("bank selected %d", isoLogCurr);
+                                                   }
     else if (input.substring(0,4 ) == "pwlx")      {  Serial.println("pwlx not implemented yet.") ; }
     else if (input.substring(0,4 ) == "pwly")      {  Serial.println("pwly implemented yet.") ; }
     else { ; } // we haven't understood, so Serial.println("?") is possible
     
-    change = false;    
+    change = false;
   }
-
-/*    if (input.substring(0, 3) == "dir") {
-      uint8_t  dir_setCh  = input.substring( 3,  5).toInt();
-      uint8_t  dir_setDr  = input.substring( 5,  7).toInt();
-      uint16_t dir_setPWM = input.substring( 7, 12).toInt();
-      uint8_t  dir_setDC  = input.substring(12, 15).toInt();
-      uint8_t  dir_setBC  = input.substring(15    ).toInt();
-      tlc.setChannel( dir_setCh, dir_setDr, dir_setPWM, dir_setDC, dir_setBC );
-    }
-*/
-/* 
-    if (input.substring(0, 3) == "pwm") {
-      if (     input.substring(3, 6) == "get" ) {
-        getPwm();
-      }
-      else if (input.substring(3, 7) == "save") {
-        //EEPROMsave();
-      }
-      else if (input.substring(3, 7) == "load") {
-        //EEPROMload();
-      }
-      else if (input.substring(3, 7) == "peek") {
-        //EEPROMpeek();
-      }
-      else {
-        readPWMsFromSerial( input, 3 );
-      }
-    }
-*/
-}
-
-// use memset, memcopy instead of for loops
-// consider making structures to save into EEPROM
-
-/*
-void EEPROMsave() {
-  for( int i = 0; i < tlc.nLEDs; i++) {
-    EEPROM[i]               = CHmask[i];
-    EEPROM[i + 1*tlc.nLEDs] = isoLog[i];
-    EEPROM[i + 2*tlc.nLEDs] = isoDC[i];
-  }
-  for( int i = 0; i < tlc.nTLCs; i++) {
-    EEPROM[i + 3*tlc.nLEDs] = isoBC[i];
-  }
-}
-
-void EEPROMload() {
-  for( int i = 0; i < tlc.nLEDs; i++) {
-    CHmask[i]  = EEPROM[i];
-    isoLog[i] = EEPROM[i + 1*tlc.nLEDs];
-    isoDC[i]   = EEPROM[i + 2*tlc.nLEDs];
-  }
-  for( int i = 0; i < tlc.nTLCs; i++) {
-    isoBC[i] = EEPROM[i + 3*tlc.nLEDs];
-  }
-}
-
-void EEPROMpeek() {
-  // print out mask, isoLog, isodc and isobc
-  Serial.println("Peek at stored PWM values, use pwmload to load them to the program.");
-  Serial.println("LED PWM   DC  BC");
-  for( int i = 0; i < tlc.nLEDs; i++) {
-    Serial.printf("%3d %5d %3d %3d\n", i, EEPROM[i + 1*tlc.nLEDs], EEPROM[i + 2*tlc.nLEDs], EEPROM[i + 3*tlc.nLEDs]);
-  }
-  Serial.println("-----------------");
-}
-*/
-
-// FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS
-// FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS
-// FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS FUNCTIONS
-
-/*
-// TODO: change significantly i think
-void readPWMsFromSerial(String input, int lenOfCommand) {
-  int stepSize = 5;
-  Serial.println("Changing PWM.");
-  for (uint16_t i = lenOfCommand; i < input.length(); i+=stepSize){
-    uint8_t led = (i-(lenOfCommand))/stepSize;
-    isoLog[led] = constrain(input.substring(i, i+stepSize).toInt(), 0, tlc.MAX_PWM);
-    Serial.println("  LED: " + String(led+1) + " at PWM: " + String(isoLog[led]));
-  }
-  Serial.println("Done");
-}
-
-void getPwm(){                                                                    // TODO: change to report log values, or delete
-  Serial.println("-- isoLog for all LEDs --------------------------");
-  Serial.println("   Format: index/driver/channel/pwm");
-  for (uint8_t i = 0; i < D_NLS; i++) {
-    Serial.printf("  %i %i\n\r", i, isoLog[i]);
-  }
-  Serial.println("--------------------------------------------------");
-}
-*/
+  

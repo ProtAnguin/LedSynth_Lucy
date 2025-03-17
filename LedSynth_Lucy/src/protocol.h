@@ -247,7 +247,7 @@ void sweepProtocol(String inStr) {
         didOfset = true;
       }
 
-      tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr] );
+      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr] );
       flash(p_dur, sendTrigOut);
       tlc.setlog( LED.curr, OFF_LOG_VALUE);
 
@@ -295,7 +295,7 @@ void peewsProtocol(String inStr) {
         didOfset = true;
       }
 
-      tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
+      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
       flash(p_dur, sendTrigOut);
       tlc.setlog( LED.curr, OFF_LOG_VALUE );
 
@@ -350,7 +350,7 @@ void vlogiProtocol(String inStr) {
 
       for (int i = 0; i < D_NLS; i++) {
         if (mask[i]) {
-          tlc.setlog(i, v_fac+genAtt+Ibanks[N_USEBANK][i]+isoLog[N_USEBANK][i]);
+          tlc.setlog(i, v_fac+genAtt+Ibanks[N_USEBANK][i]+isoLog[isoLogCurr][i]);
         }
       }
 
@@ -405,7 +405,7 @@ void rampProtocol(String inStr) {
       
       Serial.println("Ramp: Led " + String(LED.curr) + " at " + String(v_fac) + " log of iso intensity.");
 
-      t_ramp_log = v_fac+genAtt+Ibanks[N_USEBANK][LED.curr]+isoLog[N_USEBANK][LED.curr]; // TODO: this will not work as it expects a pwm value, thanks LOGs!
+      t_ramp_log = v_fac+genAtt+Ibanks[N_USEBANK][LED.curr]+isoLog[isoLogCurr][LED.curr]; // TODO: this will not work as it expects a pwm value, thanks LOGs!
 
       if (t_ramp_log < 0) t_ramp_log = OFF_LOG_VALUE; // turn blinking off as we already tested the max possible output in this ramp
 
@@ -445,7 +445,7 @@ void blinkProtocol(String inStr) {
   setOe(0);
   for (int i = 0; i < D_NLS; i++) {
     if (mask[i]) {
-      tlc.setlog(i, Ibanks[N_USEBANK][i]+genAtt+isoLog[N_USEBANK][i]);
+      tlc.setlog(i, Ibanks[N_USEBANK][i]+genAtt+isoLog[isoLogCurr][i]);
     }
   }
   
@@ -479,7 +479,7 @@ void adapProtocol(String inStr) {
 
   for (int i = 1; i < D_NLS; i++) {
     if( adapMask[i] ){
-      tlc.setlog(i, isoLog[N_USEBANK][i]+adapAtt+Ibanks[N_USEBANK][i]);
+      tlc.setlog(i, isoLog[isoLogCurr][i]+adapAtt+Ibanks[N_USEBANK][i]);
     }
   }
   
@@ -501,11 +501,11 @@ void adapProtocol(String inStr) {
         didOfset = true;
       }
 
-      tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
+      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
       envelope(1);
       delay(p_dur);
       if ( adapMask[LED.curr] ) {
-        tlc.setlog( LED.curr, isoLog[N_USEBANK][LED.curr]+adapAtt+Ibanks[N_USEBANK][LED.curr]);
+        tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+adapAtt+Ibanks[N_USEBANK][LED.curr]);
       }
       else {
         tlc.setlog( LED.curr, OFF_LOG_VALUE );
