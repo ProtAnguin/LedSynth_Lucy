@@ -72,7 +72,7 @@ void calibGo(String command) {
   }
 	setOe(0);
 
-  Serial.printf(" LED %02i  LOG %1.3f  WHITE %11d\n", LED.curr, LED.logVal, OPTwhite);
+  Serial.printf(" LED %02i  LOG %1.3f  OPTch3 %11d\n", LED.curr, LED.logVal, OPTwhite);
 }
 
 void calibRun(String command) {
@@ -94,6 +94,12 @@ void calibRun(String command) {
       setRainbow(OFF_LOG_VALUE);
       
       Serial.printf("%11d,", OPTwhite);
+
+      if (Serial.available() > 0) {
+        command = Serial.readStringUntil('*');
+        j = 200;
+        break;
+      }
     }
 
     Serial.println(); // go to new line boy!

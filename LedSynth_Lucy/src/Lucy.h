@@ -69,8 +69,8 @@ uint32_t CHmask[D_NLS] = {   // Channel mask
 
 float    LogIn [N_PWL][D_NLS]  = { 0 } ;  // placeholder for desired logI values if PWL interpolation is used
 float    LogOut[N_PWL][D_NLS] = { 0 } ;   // placeholder for output  logI values if PWL interpolation is used to achieve this
-float    isoLog[N_ISOBANKS][D_NLS] = { 0 } ;   // placeholders for isoLog banks, it will be populated in Setup by lodaFromEEPROM
-int      isoLogCurr = 0 ;
+float    isoLog[N_ISOBANKS][D_NLS];  // placeholders for isoLog banks, it will be populated in Setup by lodaFromEEPROM
+int      isoLogCurr = 0;
 
 // MARKO STUFF PROTOCOL
 // the values should be loaded / stored to EEPROM, so using structs or 

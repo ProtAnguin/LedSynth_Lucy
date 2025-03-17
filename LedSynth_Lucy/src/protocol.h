@@ -179,7 +179,7 @@ void protMatReport(String inStr) {
   Serial.print(  "p.TOU = "); if (sendTrigOut  ) { Serial.println(" 1;"); } else { Serial.println(" 0;"); }
   
   Serial.print(  "p.PWM = [");
-  for (uint8_t i=0; i < D_NLS; i++) Serial.printf("%3.1f ", isoLog[i]);
+  for (uint8_t i=0; i < D_NLS; i++) Serial.printf("%3.1f ", isoLog[isoLogCurr][i]);
   Serial.println("];");
   
   Serial.println("%-END_REPORT-");

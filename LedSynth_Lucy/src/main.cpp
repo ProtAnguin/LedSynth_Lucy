@@ -149,7 +149,7 @@ void setOe(bool state) {
 void storeIso() {
     Serial.printf("Store Led%02i iso log %1.3f ",LED.curr,LED.logVal) ;
     if (LED.all)
-      Serial.println("aborted: all leds on, switch to one first") ;
+      Serial.println("aborted: all leds on, switch to one led first") ;
     else if ((LED.curr<0) || (LED.curr>D_NLS))
       Serial.println("aborted: current LED number is impossible") ;
     else if ((LED.logVal < 0) || (LED.logVal > 4 ))
@@ -207,9 +207,6 @@ void setup() {
   pinMode(TRIGINPIN,    INPUT_PULLUP);
 
   attachInterrupt(digitalPinToInterrupt(TRIGINPIN), trigInISR, RISING); // interrupt routine to catch the trigIn flag
-
-  //EEPROMsave();
-  //EEPROMload();
 
   loadFromEEPROM();  // Load stored data into isoLog
 
@@ -325,11 +322,20 @@ void loop() {
     else if (input.substring(0, 6) == "update")    {  Serial.println("update not implemented yet.") ; }     // TODO: implement as auto update (no need to use '!')
     else if (input.substring(0, 4) == "bank")      {  isoLogCurr  = constrain(input.substring(4).toInt(),0,N_ISOBANKS-1);
                                                       Serial.printf("bank selected %d", isoLogCurr);
+                                                      peekFromEEPROM();
                                                    }
     else if (input.substring(0,4 ) == "pwlx")      {  Serial.println("pwlx not implemented yet.") ; }
     else if (input.substring(0,4 ) == "pwly")      {  Serial.println("pwly implemented yet.") ; }
+    else if (input.substring(0,6 ) == "eeprom")    {
+      if (input.substring(6,10 ) == "peek") { peekFromEEPROM(); }
+      if (input.substring(6,10 ) == "load") { loadFromEEPROM(); }
+      if (input.substring(6,10 ) == "save") { saveToEEPROM(); }
+      if (input.substring(6,11 ) == "teser") { resetEEPROM(); }
+      if (input.substring(6,9 ) == "set")   { setDataValue(input.substring(9,11).toInt(), input.substring(11,13).toInt(), input.substring(13).toFloat()); }
+    }
     else { ; } // we haven't understood, so Serial.println("?") is possible
     
     change = false;
+   }
   }
   

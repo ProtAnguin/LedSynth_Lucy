@@ -10,18 +10,17 @@ void peekFromEEPROM() {
     Serial.println("-------------------------------");
 
     for (int i = 0; i < M_ROWS; i++) {
+        if(i == isoLogCurr) { Serial.print("X\t"); } else { Serial.print("\t"); }
+
         for (int j = 0; j < N_COLUMNS; j++) {
             int address = (i * N_COLUMNS + j) * sizeof(float);
             float value;
             EEPROM.get(address, value);
-            Serial.print(value, 6);  // Print float with 6 decimal places
+            Serial.print(value, 3);  // Print float with 6 decimal places
             Serial.print("\t");
         }
         Serial.println();
     }
-    
-    Serial.println("-------------------------------");
-    Serial.println("Type 'Y' to load this data, or any other key to skip.");
 }
 
 // Load EEPROM data into the main array
@@ -33,7 +32,7 @@ void loadFromEEPROM() {
             EEPROM.get(address, isoLog[i][j]);
         }
     }
-    Serial.println("Data loaded successfully.");
+    Serial.println("EEPROM data loaded successfully.");
 }
 
 // Save the current array to EEPROM
@@ -43,21 +42,30 @@ void saveToEEPROM() {
         for (int j = 0; j < N_COLUMNS; j++) {
             int address = (i * N_COLUMNS + j) * sizeof(float);
             EEPROM.put(address, isoLog[i][j]);
+            // Serial.printf(" Saved at address %6i  value %1.3f\n", address, isoLog[i][j]);
         }
     }
-    Serial.println("Save complete.");
+    peekFromEEPROM();
+    Serial.println("EEPROM save completed.");
+}
+
+// DANGER: force EEPROM isoLog to all zeros
+void resetEEPROM() {
+    for (int i = 0; i < M_ROWS; ++i) {
+        for (int j = 0; j < N_COLUMNS; ++j) {
+            isoLog[i][j] = 0.0;
+        }
+    }
+    saveToEEPROM();
+    Serial.println("EEPROM has been reset!");
 }
 
 // Set a particular value in the array
 void setDataValue(int row, int col, float value) {
     if (row >= 0 && row < M_ROWS && col >= 0 && col < N_COLUMNS) {
         isoLog[row][col] = value;
-        Serial.print("Set isoLog[");
-        Serial.print(row);
-        Serial.print("][");
-        Serial.print(col);
-        Serial.print("] = ");
-        Serial.println(value, 6);
+
+        Serial.printf(" isoLog at [%2d][%2d] SET to value %1.3f (this does not SAVE to EEPROM)\n", row, col, value);
     } else {
         Serial.println("Error: Index out of bounds!");
     }
