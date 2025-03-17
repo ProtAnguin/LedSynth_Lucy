@@ -195,12 +195,6 @@ void setup() {
 
   Wire.begin();
 
-  opt.begin();
-  opt.setBasicSetup();
-  opt.setRange(RANGE_AUTO);
-  opt.setConversionTime(CONVERSION_TIME_100MS);
-  opt.setOperationMode(OPERATION_MODE_CONTINUOUS);
-
   pinMode(TRIGOUTPIN,   OUTPUT);
   pinMode(ENVELOPEPIN,  OUTPUT);
   pinMode(INFOPIN,      OUTPUT);               

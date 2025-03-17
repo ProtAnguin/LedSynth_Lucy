@@ -124,6 +124,15 @@ void calibRun(String command) {
 void calibEnvironment() {
 	Serial.println(" CALIB environment (using OPT4048)");
 	Serial.println("  Input 'help' for instructions and 'exit' to exit the Protocol builder");
+
+  if(!opt.begin()) {
+    Serial.println(" ERROR calib not possible, OPT sensor not detected! Connect and run calib again (no need to reset the LedSynth).");
+    return;
+  }
+  opt.setBasicSetup();
+  opt.setRange(RANGE_AUTO);
+  opt.setConversionTime(CONVERSION_TIME_100MS);
+  opt.setOperationMode(OPERATION_MODE_CONTINUOUS);
   
   // House cleaning
   command = "";
