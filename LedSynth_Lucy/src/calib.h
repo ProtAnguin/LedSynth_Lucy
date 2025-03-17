@@ -2,6 +2,7 @@
 uint32_t OPTwhite;
 
 float OPTcalibValues[D_NLS] = {
+  1.000000,
   1.963336,
   1.381317,
   1.445040,
@@ -72,7 +73,12 @@ void calibGo(String command) {
   }
 	setOe(0);
 
-  Serial.printf(" LED %02i  LOG %1.3f  OPTch3 %11d\n", LED.curr, LED.logVal, OPTwhite);
+  Serial.printf(" LED %02i  LOG %1.3f  rawOPTch3 %11d OPTcorrFac for this LED %1.4f result %16.4f\n",
+    LED.curr,
+    LED.logVal,
+    OPTwhite,
+    OPTcalibValues[LED.curr], 
+    float(OPTwhite) * OPTcalibValues[LED.curr]);
 }
 
 void calibRun(String command) {
@@ -93,7 +99,7 @@ void calibRun(String command) {
       OPTwhite = opt.getADCCh3();
       setRainbow(OFF_LOG_VALUE);
       
-      Serial.printf("%11d,", OPTwhite);
+      Serial.printf("%16.4f,", float(OPTwhite) * OPTcalibValues[LED.curr]);
 
       if (Serial.available() > 0) {
         command = Serial.readStringUntil('*');
