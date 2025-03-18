@@ -1,6 +1,11 @@
 // ------------------------------------------------------------------------------------------------------------------------------- VARIABLES
 uint32_t OPTwhite;
 
+float calibFrom = 0.0;
+float calibStep = 0.1;
+float calibTo   = 4.0;
+int calibMeasureTime_ms = 900;
+
 float OPTcalibValues[D_NLS] = {
   1.000000,
   1.963336,
@@ -28,16 +33,20 @@ float OPTcalibValues[D_NLS] = {
 void calibHelp(String inStr) {
   if (inStr.substring(0, 4) != "help" ) { return; }
   
-  Serial.println("- CALIB  PROT ----------------------------------------------------------------------------------------");
+  Serial.println("- CALIB  PROT -----------------------------------------------------------------------------------------------------------------------------------");
   Serial.println("  'exit' to exit the Protocol builder");
   Serial.println("  'help' to see this again");
   Serial.println("");
-  Serial.println("  'set l X' to set the LED");
-  Serial.println("  'set a X.XX' to set the attenuation (1 = 10%)");
+  Serial.printf ("  'set l X' to set the LED                                                        Current value: %d\n", LED.curr);
+  Serial.printf ("  'set a X.XX' to set the attenuation (1 = 10%)                                   Current value: %1.4f log\n", LED.logVal);
+  Serial.println("  'go' to set the LED at attenuation and measure in 100 ms intervals until the measurement time is reached");
   Serial.println("");
-  Serial.println("  'go' to set the LED at attenuation");
-  Serial.println("  'run' predefined protocol with every LED at attenuation steps, produces CSV");
-  Serial.println("------------------------------------------------------------------------------------------------ END -");
+  Serial.printf ("  'set f X.XX' set the intensity to start from (positive decimal values)          Current value: %1.4f log\n", calibFrom);
+  Serial.printf ("  'set s X.XX' set the intensity step (positive decimal values)                   Current value: %1.4f log\n", calibStep);
+  Serial.printf ("  'set t X.XX' set the intensity to go to (positive decimal values)               Current value: %1.4f log\n", calibTo);
+  Serial.printf ("  'set m X'    set the measurement time of the OPT sensor [ms]                    Current value: %d ms\n", calibMeasureTime_ms);
+  Serial.println("  'run' the protocol with every LED at attenuation steps, produces CSV (sensitivity factors of the OPT are incorporated in the result)");
+  Serial.println("------------------------------------------------------------------------------------------------------------------------------------------- END -");
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------- SET CALIB FROM SERIAL
@@ -54,6 +63,22 @@ void setCalibFromSerial(String command) {
 		Serial.printf("@att %1.3f\n",LED.logVal);
 		setLog();
   }
+  if (command.substring(0, 6) == "set f ") {
+		calibFrom = command.substring(6).toFloat();
+		Serial.printf("Calib from: %1.3f\n",calibFrom);
+  }
+  if (command.substring(0, 6) == "set s ") {
+		calibStep = command.substring(6).toFloat();
+		Serial.printf("Calib step: %1.3f\n",calibStep);
+  }
+  if (command.substring(0, 6) == "set t ") {
+		calibTo   = command.substring(6).toFloat();
+		Serial.printf("Calib  to : %1.3f\n",calibTo);
+  }
+  if (command.substring(0, 6) == "set m ") {
+		calibMeasureTime_ms = command.substring(6,8).toInt();
+		Serial.printf("Calib measure time se to %d ms\n", calibMeasureTime_ms);
+  }
 } // end setFromSerial
 
 // ------------------------------------------------------------------------------------------------------------------------------- CALIB GO measure with OPT
@@ -66,7 +91,7 @@ void calibGo(String command) {
   Serial.printf("%2d,", LED.curr);
   setOe(1);
 	// OPT measure and report for the first implementation
-	for(int i = 0; i<8; i++) {
+	for(int i = 0; i<=calibMeasureTime_ms; i+=100) {
     delay(100); // give OPT time to measure
 	  OPTwhite = opt.getADCCh3();
     Serial.printf("%11d,", OPTwhite);
@@ -86,8 +111,8 @@ void calibRun(String command) {
   
   setRainbow(OFF_LOG_VALUE);
   setOe(1);
-  for (int j = 0; j < 60; j++) { // dekaLOG values (will be divided by 10.0 later)
-    LED.logVal = j/10.0;
+  for (float j = calibFrom; j <= calibTo; j+=calibStep) { // dekaLOG values (will be divided by 10.0 later)
+    LED.logVal = j;
     Serial.printf("%1.3f,", LED.logVal);
 
     for (int i = 0; i < D_NLS; i++) { // curr led index
@@ -95,7 +120,7 @@ void calibRun(String command) {
 
       tlc.setlog( LED.curr, LED.logVal );
       tlc.update();
-      delay(900);
+      delay(calibMeasureTime_ms);
       OPTwhite = opt.getADCCh3();
       setRainbow(OFF_LOG_VALUE);
       
