@@ -1,9 +1,8 @@
-// TODO: add ESPWM settings to user interface
-// TODO: explain what PWL is in the code
-// TODO: add EEPROM capabilities
-// TODO: patch code to use LED 1 for first rainbow led (00 reserved for zeroorderchannel)
+// TODO: implement a voltage divider on TRIGINPIN with a 4k7 and a 10k0 resistors to step down 10 V TTL to 3.3V
+// TODO: label the BNC pins on the front plate
+// TODO: write up an user manual 
+// TODO: discuss implementation of PWL lookup table to correct for low intensity droop
 // TODO: search for <TODO:> and take care of any
-
 
 #define LEDSYNTHNAME          "Lucy"
 
@@ -69,18 +68,14 @@ uint32_t CHmask[D_NLS] = {   // Channel mask
 
 float    LogIn [N_PWL][D_NLS]  = { 0 } ;  // placeholder for desired logI values if PWL interpolation is used
 float    LogOut[N_PWL][D_NLS] = { 0 } ;   // placeholder for output  logI values if PWL interpolation is used to achieve this
-float    isoLog[N_ISOBANKS][D_NLS];  // placeholders for isoLog banks, it will be populated in Setup by lodaFromEEPROM
-int      isoLogCurr = 0;
-
-// MARKO STUFF PROTOCOL
-// the values should be loaded / stored to EEPROM, so using structs or 
-// TODO: TO BE REMOVED, CHANGED
+float    isoLog[N_ISOBANKS][D_NLS];  // placeholders for isoLog banks, it will be populated in Setup by loadFromEEPROM
+int      isoLogCurr = 0; // which line of isoLog to read values from
 
 float   Ibanks[2][D_NLS] = { 0 } ;
 uint8_t N_MAXBANK = (sizeof(Ibanks)/sizeof(Ibanks[0]))-1; // number of rows in Ibanks
 uint8_t N_USEBANK = 0; // index of intensity bank (Ibanks) to be used
+
 // QUESTION: is this actually used by protocols?
-// TODO: consider using as 32 bit mask instead? A: What if we use more than 32 LEDs? Lets stick with arrays for now, C is fast.
 
 // Led reference Index         ZO,     1      2      3      4      5      6      7      8      9     10     11     12     13     14     15     16     17     18     19 // LED mapping
 uint16_t lambdas[D_NLS]   = { 999,   363,   372,   385,   405,   422,   435,   453,   475,   491,   517,   538,   557,   573,   589,   613,   630,   659,   669,   679};
@@ -88,10 +83,5 @@ int         mask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,    
 int     adapMask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for adaptation
 uint8_t    isoDC[D_NLS] =  {  127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127}; 
 uint8_t  isoBC[D_nTLCs] =  {  127,   127,   127} ;
-#define MAX_ATT_VALUE         6                                    // minimal allowed attenuation value. Where int(MAX_PWM*MIN_ATT_VALUE) equals zero.
+#define MAX_ATT_VALUE         6 // minimal allowed attenuation value. Where int(MAX_PWM*MIN_ATT_VALUE) equals zero.
 #define OFF_LOG_VALUE         9 // the log values to get the LED to turn off, irrespectible of number of channels
-
-//  If your compiler is GCC you can use following "GNU extension" syntax: int array[1024] = {[0 ... 1023] = 5};
-//  https://stackoverflow.com/questions/201101/how-to-initialize-all-members-of-an-array-to-the-same-value
-// uint16_t isoLog[D_NLS] = {[0 .. D_NLS] = 65535};
-// uint8_t  isoDC[D_NLS] =   {[0 .. D_NLS] = 127} ;                  
