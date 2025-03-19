@@ -6,6 +6,9 @@ float calibStep = 0.1;
 float calibTo   = 4.0;
 int calibMeasureTime_ms = 900;
 
+int beginLed = 0;
+int endLed = D_NLS;
+
 float OPTcalibValues[D_NLS] = {
   1.000000,
   1.963336,
@@ -45,6 +48,8 @@ void calibHelp(String inStr) {
   Serial.printf ("  'set s X.XX' set the intensity step (positive decimal values)                   Current value: %1.4f log\n", calibStep);
   Serial.printf ("  'set t X.XX' set the intensity to go to (positive decimal values)               Current value: %1.4f log\n", calibTo);
   Serial.printf ("  'set m X'    set the measurement time of the OPT sensor [ms]                    Current value: %d ms\n", calibMeasureTime_ms);
+  Serial.printf ("  'set b X'    start with the LED                                                 Current value: %d \n", beginLed);
+  Serial.printf ("  'set e X'    end with the LED                                                   Current value: %d \n", endLed);
   Serial.println("  'run' the protocol with every LED at attenuation steps, produces CSV (sensitivity factors of the OPT are incorporated in the result)");
   Serial.println("------------------------------------------------------------------------------------------------------------------------------------------- END -");
 }
@@ -76,8 +81,16 @@ void setCalibFromSerial(String command) {
 		Serial.printf("Calib  to : %1.3f\n",calibTo);
   }
   if (command.substring(0, 6) == "set m ") {
-		calibMeasureTime_ms = command.substring(6,8).toInt();
+		calibMeasureTime_ms = command.substring(6).toInt();
 		Serial.printf("Calib measure time se to %d ms\n", calibMeasureTime_ms);
+  }
+  if (command.substring(0, 6) == "set b ") {
+    beginLed = constrain(command.substring(6).toInt(),0,D_NLS) ;
+		Serial.printf("Begin with led %d",beginLed);
+  }
+  if (command.substring(0,6) == "set e ") {
+    endLed = constrain(command.substring(6).toInt(),0,D_NLS) ;
+		Serial.printf("End with led %d",endLed);
   }
 } // end setFromSerial
 
@@ -113,9 +126,9 @@ void calibRun(String command) {
   setOe(1);
   for (float j = calibFrom; j <= calibTo; j+=calibStep) { // dekaLOG values (will be divided by 10.0 later)
     LED.logVal = j;
-    Serial.printf("%1.3f,", LED.logVal);
+    Serial.printf("%1.3f, ", LED.logVal);
 
-    for (int i = 0; i < D_NLS; i++) { // curr led index
+    for (int i = beginLed; i <= endLed; i++) { // curr led index                                                  // PP TODO check <=, <
       LED.curr = i;
 
       tlc.setlog( LED.curr, LED.logVal );
@@ -124,7 +137,8 @@ void calibRun(String command) {
       OPTwhite = opt.getADCCh3();
       setRainbow(OFF_LOG_VALUE);
       
-      Serial.printf("%16.4f,", float(OPTwhite) * OPTcalibValues[LED.curr]);
+      // Serial.printf("%16.4f,", float(OPTwhite) * OPTcalibValues[LED.curr]);
+      Serial.printf("%6.4f, ", log10(float(OPTwhite)));
 
       if (Serial.available() > 0) {
         command = Serial.readStringUntil('*');
@@ -148,7 +162,7 @@ void calibRun(String command) {
 // ------------------------------------------------------------------------------------------------------------------------------- CALIB ENVIRONMENT MAIN
 void calibEnvironment() {
 	Serial.println(" CALIB environment (using OPT4048)");
-	Serial.println("  Input 'help' for instructions and 'exit' to exit the Protocol builder");
+	Serial.println("  Input 'help' for instructions and 'exit' to exit");
 
   if(!opt.begin()) {
     Serial.println(" ERROR calib not possible, OPT sensor not detected! Connect and run calib again (no need to reset the LedSynth).");

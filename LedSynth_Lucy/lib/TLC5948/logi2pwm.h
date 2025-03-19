@@ -35,7 +35,11 @@
 #define M21BITBOUNDARY    19      // mode 2 below this boundary 
 #define M10BITBOUNDARY    22      // mode 1 below this boundary (last resort), and mode 0 (all off) above
 
-#define M5SUBMODE       1         // mode 5: submode 0 -> pwm fixed to M50FIXPWM; submode 1 -> staircase pwm 2^(16-log2pwm) ; submode 2 -> pwm rounded to M5STEP
+// PP 20240318: change M5SUBMODE  
+#define M5SUBMODE       2         // mode 5 submode:
+                                  // submode 0 -> pwm fixed to M50FIXPWM; set DC accordingly
+                                  // submode 1 -> staircase pwm 2^(16-log2pwm) with step M51STEP, DC by division
+                                  // submode 2 -> pwm rounded to M52STEP, can have DC fixed to 127 with M5FORCEMAXDC
 #define M4SUBMODE       1         // mode 4: enable/disable search 
 #define M3SUBMODE       1         // mode 3: enable/disable search
 
@@ -55,6 +59,7 @@
 #define M1STEP          1       // mode 1  PWM granularity  (1,2)
 
 //settings for DC
+// PP 20240318 - consider setting M5FORCEMAXDC to 1
 #define M7FORCEMAXDC    1       // mode 7:           1 -> DC=127 with multiple channels in use
 #define M6FORCEMAXDC    1       // mode 6:           1 -> DC=127 on single channel mode6
 #define M5FORCEMAXDC    0       // mode 5 submode 2: 1 -> DC=127 
@@ -129,13 +134,13 @@ else if (pwmlog2<M54BITBOUNDARY)        // mode 5 (single channel, medium PWM)
                 out_pwm     = (uint32_t)pwm;
                 out_dc      = (uint32_t)(round(MAXDC*MAXPWM/M50FIXPWM*pwmfract));
             }
-            else if (M5SUBMODE==1)      // 
+            else if (M5SUBMODE==1)      // pwm with stepping M51STEP, DC calculated afterwards
             {
                 float pwm = round(pow (2, (16-pwmlog2) )/M51STEP)*M51STEP ;
                 out_pwm     = (uint32_t)pwm;
                 out_dc      = (uint32_t)(round(MAXDC*MAXPWM/pwm*pwmfract));
             }
-            else if (M5SUBMODE==2)
+            else if (M5SUBMODE==2)           // PWM with stepping M52STEP, M5FORCEMAXDC
             {
             float pwm   = (uint32_t)(round(pwmfract*MAXPWM/M52STEP)*M52STEP ) ;         
             if (pwm>MAXPWM) 
