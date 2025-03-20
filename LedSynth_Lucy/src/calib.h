@@ -4,10 +4,10 @@ uint32_t OPTwhite;
 float calibFrom = 0.0;
 float calibStep = 0.1;
 float calibTo   = 4.0;
-int calibMeasureTime_ms = 900;
+int calibMeasureTime_ms = 400;
 
 int beginLed = 0;
-int endLed = D_NLS;
+int endLed = D_NLS-1;
 
 float OPTcalibValues[D_NLS] = {
   1.000000,
@@ -85,11 +85,11 @@ void setCalibFromSerial(String command) {
 		Serial.printf("Calib measure time se to %d ms\n", calibMeasureTime_ms);
   }
   if (command.substring(0, 6) == "set b ") {
-    beginLed = constrain(command.substring(6).toInt(),0,D_NLS) ;
+    beginLed = constrain(command.substring(6).toInt(),0,D_NLS-1) ;
 		Serial.printf("Begin with led %d",beginLed);
   }
   if (command.substring(0,6) == "set e ") {
-    endLed = constrain(command.substring(6).toInt(),0,D_NLS) ;
+    endLed = constrain(command.substring(6).toInt(),0,D_NLS-1) ;
 		Serial.printf("End with led %d",endLed);
   }
 } // end setFromSerial
@@ -138,7 +138,8 @@ void calibRun(String command) {
       setRainbow(OFF_LOG_VALUE);
       
       // Serial.printf("%16.4f,", float(OPTwhite) * OPTcalibValues[LED.curr]);
-      Serial.printf("%6.4f, ", log10(float(OPTwhite)));
+      // Serial.printf("%6.4f, ", log10(float(OPTwhite)));
+      Serial.printf("%12d, ", OPTwhite);
 
       if (Serial.available() > 0) {
         command = Serial.readStringUntil('*');

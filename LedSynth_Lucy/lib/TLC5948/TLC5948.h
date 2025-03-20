@@ -8,7 +8,7 @@
 #include <SPI.h>
 #include <math.h>
 
-#define LATCHDELAYUS 10
+#define LATCHDELAYUS 100
 
 // Define the class
 class TLC5948 {
