@@ -105,7 +105,6 @@ void protReport(String inStr) {
   Serial.println("  Vlogi to:              " + String(v_t) + " log");
   Serial.println("  General attenuation    " + String(genAtt) + " log");
   Serial.println("  Adaptation attenuation " + String(adapAtt) + " log");
-  Serial.println("  Adaptation bank " + String(N_USEBANK));
   Serial.print(  "  Wait for TTLin:        "); if (waitForTrigIn) { Serial.println("YES"); } else { Serial.println("NO"); }
   Serial.print(  "  Send TTLout:           "); if (sendTrigOut) { Serial.println("YES"); } else { Serial.println("NO"); }
   Serial.println();
@@ -128,7 +127,6 @@ void protHelp(String inStr) {
   Serial.println("    set v t 0.0  sets the <t>o value   of <v>logi and ramp protocols");
   Serial.println("    set a g -1.0 sets the <g>eneral <a>ttenuation to be used in sweep, blink and adap protocols");
   Serial.println("    set a a -1.0 sets the <a>daptive <a>ttenuation to be used in adap protocol");
-  Serial.println("    set a b X sets the <a>ttenuation <b>ank X to be used");
   Serial.println("    set c 3 sets the window width to be used in polycn and polycb protocols [1-11]");
   Serial.println("    set t X where X can be:");
   Serial.println("     +-Command-----TrigIn----TrigOut-+");
@@ -174,7 +172,6 @@ void protMatReport(String inStr) {
   Serial.println("p.VTO = " + String(v_t) + ";");
   Serial.println("p.GAT = " + String(genAtt) + ";");
   Serial.println("p.AAT = " + String(adapAtt) + ";");
-  Serial.println("p.ABN = " + String(N_USEBANK) + ";");
   Serial.print(  "p.TIN = "); if (waitForTrigIn) { Serial.println(" 1;"); } else { Serial.println(" 0;"); }
   Serial.print(  "p.TOU = "); if (sendTrigOut  ) { Serial.println(" 1;"); } else { Serial.println(" 0;"); }
   
@@ -190,8 +187,7 @@ void setFromSerial(String command) {
   
   if (command.substring(0, 7) == "set a g") {    genAtt = constrain(command.substring(7).toFloat(), 0, MAX_ATT_VALUE);         Serial.println("General attenuation set to: " + String(genAtt) + " log"); }
   if (command.substring(0, 7) == "set a a") {   adapAtt = constrain(command.substring(7).toFloat(), 0, MAX_ATT_VALUE);         Serial.println("Adaptive attenuation set to: " + String(adapAtt) + " log"); }
-  if (command.substring(0, 7) == "set a b") { N_USEBANK = constrain(command.substring(7).toFloat(), 0, N_MAXBANK);         Serial.println("Attenuation bank set to: " + String(N_USEBANK)); }
-
+  
   if (command.substring(0, 5) == "set o") {       p_ofs = constrain(command.substring(5).toInt(), 0, 86400000);     Serial.println("Offset   [ms]: " + String(p_ofs)); }
   if (command.substring(0, 5) == "set d") {       p_dur = constrain(command.substring(5).toInt(), 0, 86400000);     Serial.println("Duration [ms]: " + String(p_dur)); }
   if (command.substring(0, 5) == "set p") {       p_pau = constrain(command.substring(5).toInt(), 0, 86400000);     Serial.println("Pause    [ms]: " + String(p_pau)); }
@@ -247,7 +243,7 @@ void sweepProtocol(String inStr) {
         didOfset = true;
       }
 
-      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr] );
+      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt);
       flash(p_dur, sendTrigOut);
       tlc.setlog( LED.curr, OFF_LOG_VALUE);
 
@@ -295,7 +291,7 @@ void peewsProtocol(String inStr) {
         didOfset = true;
       }
 
-      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
+      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt);
       flash(p_dur, sendTrigOut);
       tlc.setlog( LED.curr, OFF_LOG_VALUE );
 
@@ -350,7 +346,7 @@ void vlogiProtocol(String inStr) {
 
       for (int i = 0; i < D_NLS; i++) {
         if (mask[i]) {
-          tlc.setlog(i, v_fac+genAtt+Ibanks[N_USEBANK][i]+isoLog[isoLogCurr][i]);
+          tlc.setlog(i, v_fac+genAtt+isoLog[isoLogCurr][i]);
         }
       }
 
@@ -405,7 +401,7 @@ void rampProtocol(String inStr) {
       
       Serial.println("Ramp: Led " + String(LED.curr) + " at " + String(v_fac) + " log of iso intensity.");
 
-      t_ramp_log = v_fac+genAtt+Ibanks[N_USEBANK][LED.curr]+isoLog[isoLogCurr][LED.curr]; // TODO: this will not work as it expects a pwm value, thanks LOGs!
+      t_ramp_log = v_fac+genAtt+isoLog[isoLogCurr][LED.curr]; // TODO: this will not work as it expects a pwm value, thanks LOGs!
 
       if (t_ramp_log < 0) t_ramp_log = OFF_LOG_VALUE; // turn blinking off as we already tested the max possible output in this ramp
 
@@ -445,7 +441,7 @@ void blinkProtocol(String inStr) {
   setOe(0);
   for (int i = 0; i < D_NLS; i++) {
     if (mask[i]) {
-      tlc.setlog(i, Ibanks[N_USEBANK][i]+genAtt+isoLog[isoLogCurr][i]);
+      tlc.setlog(i, genAtt+isoLog[isoLogCurr][i]);
     }
   }
   
@@ -479,7 +475,7 @@ void adapProtocol(String inStr) {
 
   for (int i = 1; i < D_NLS; i++) {
     if( adapMask[i] ){
-      tlc.setlog(i, isoLog[isoLogCurr][i]+adapAtt+Ibanks[N_USEBANK][i]);
+      tlc.setlog(i, isoLog[isoLogCurr][i]+adapAtt);
     }
   }
   
@@ -501,11 +497,11 @@ void adapProtocol(String inStr) {
         didOfset = true;
       }
 
-      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt+Ibanks[N_USEBANK][LED.curr]);
+      tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt);
       envelope(1);
       delay(p_dur);
       if ( adapMask[LED.curr] ) {
-        tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+adapAtt+Ibanks[N_USEBANK][LED.curr]);
+        tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+adapAtt);
       }
       else {
         tlc.setlog( LED.curr, OFF_LOG_VALUE );

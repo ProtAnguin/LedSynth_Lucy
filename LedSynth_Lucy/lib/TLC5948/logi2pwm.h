@@ -10,9 +10,14 @@
          ( (out_dc    & 0x7f) << 16 ) | 
          ( (out_pwm   & 0xffff) );
     
-    For a single channel, PWM provides 16 bits, dc 7 bits, so all together there are about 23 bits to play around; 0 bits mean 1 channel at full, 
-    22 bits mean very small dc and low pwm. the absolute lowest light would correspond to 22.989 bits = log2 (MAXPWM*MAXDC) of dynamic reserve. 
-    The function using input nch=1 abd negative logi values will switch to "multichannel" mode 7 (-0.301 = 2 leds, -0.602 = 4 leds, -1.0 = 10 leds).
+    IN THEORY
+    For a single channel, PWM/DC control provides 16 bits, dc 7 bits, so all together there are about 23 bits to play = log2 (MAXPWM*MAXDC). 
+    0 bits mean a single channel at full pwm/dc
+    22 bits mean very small dc and low pwm. 
+    22.989 bits would correspond to the absolute lowest intensity (pwm=1/65535, dc=1/127)
+    
+    The function using input nch=1 and negative logi values will switch to "multichannel" mode 7 
+    According to logi this would mean (-0.301 = 2 leds, -0.602 = 4 leds, -1.0 = 10 leds).
     Note 1 (decadic magnitude=logI unit) = 3.3219 bits (=octaves 2x), as per 1/log10(2)), and 2 bits = 0.301 decades.
     
     (PWMSTEP) Granularity 128 (values 128,256,384,512 ...) makes all 512 segments on, flashing produces with maximally reduced low harmonics

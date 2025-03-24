@@ -8,7 +8,9 @@
 #include <SPI.h>
 #include <math.h>
 
-#define LATCHDELAYUS 100
+#define LATCH_DELAY_US 10
+#define GSCLK_MIN_HZ  1000000
+#define GSCLK_MAX_HZ 33000000
 
 // Define the class
 class TLC5948 {
@@ -46,6 +48,12 @@ class TLC5948 {
     bool debugTLCflag = false;
     bool printFramesTLCflag = false;
 
+    int GOAL_SCLK_HZ           = 2000000; // Serial clock speed in Hz
+    int GOAL_GSCLK_HZ          = 2000000;
+    // float GOAL_GSCLK_MHZ = 8.0 ; // Gray scale closk speed in MHz (10 MHz clock gives 152 Hz repeat, with ESPWM ON and PWM > 4 it brings it up to 600 Hz)
+    // float GSCLK_MIN_MHZ = 1.0  ;
+    // float GSCLK_MAX_MHZ = 14.1 ;                  // PROLLY NUT NECESSARY TO HAVE THESE AS VARIABLES?
+
     // Other member functions
     void update();
     void begin();
@@ -75,7 +83,6 @@ class TLC5948 {
     int _GS_PIN;
     int _LAT_PIN;
     uint _ANALOG_WRITE_BIT_RES  = 2;
-    int _GOAL_SCLK_HZ           = 10000000; // Serial clock speed in Hz
     int _frameSize              = 16; // sending with transfer16 (hardcoded and has to be 16 for now)
     int _bw                     = 257; // width of bits per driver
     uint _totnch;
@@ -87,11 +94,6 @@ class TLC5948 {
     uint8_t   _BC_MIN_VAL = 0;
     uint8_t   _BC_MAX_VAL = MAX_BC;
 
-    float _GOAL_GSCLK_MHZ = 10; // Gray scale closk speed in MHz (10 MHz clock gives 152 Hz repeat, with PWM > 4 it brings it up to 600 Hz)
-    float _GSCLK_MIN_MHZ = 1 ;
-    float _GSCLK_MAX_MHZ = 14.2 ;                  // PROLLY NUT NECESSARY TO HAVE THESE AS VARIABLES?
-
-    SPISettings _SPIset;
 };
 
 #endif // ifndef TLC5948_LIB_H

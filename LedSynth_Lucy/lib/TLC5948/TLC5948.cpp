@@ -7,7 +7,6 @@ TLC5948::TLC5948(int nTLCs_in,int nLEDs_in,  uint32_t maskKey[],  int GS_PIN, in
   nTLCs     = nTLCs_in;
   _GS_PIN   = GS_PIN;
   _LAT_PIN  = LATCH_PIN;
-  _SPIset   = SPISettings(_GOAL_SCLK_HZ, MSBFIRST, SPI_MODE0);
 
   _nRelevantBits = nTLCs * _bw;
   _nFrames = (_nRelevantBits + _frameSize - 1) / _frameSize; // check if this is maybe a dangerous way of getting the nFrames. Should not rely on int rounding while casting.
@@ -42,7 +41,7 @@ void TLC5948::begin() {
   pinMode(_LAT_PIN, OUTPUT);
   digitalWrite(_LAT_PIN, LOW);
 
-  setGSCLK (_GOAL_GSCLK_MHZ ) ; 
+  setGSCLK (GOAL_GSCLK_HZ ) ; 
   // analogWriteFrequency(_GS_PIN, _GOAL_GSCLK_HZ);                                // TODO: make frequency user - selectable!!!!
   // analogWriteResolution(_ANALOG_WRITE_BIT_RES);
   // analogWrite(_GS_PIN, (1 << (_ANALOG_WRITE_BIT_RES-1))); // set 50% duty cycle
@@ -52,27 +51,72 @@ void TLC5948::begin() {
   update();
 }
 
-// TODO: SHOULD REPORT THE ACTUAL FREQUENCY!!!!!!
-// WIRING: consider using a FLEXPWM pin as described in the code in the links
-// NOTE: the electrical calibration of LEDs MIGHT well depend on the frequency used!!!!
-// how is the frequency determined by Resolution and clock??
-// https://www.pjrc.com/teensy/td_pulse.html
-// https://forum.pjrc.com/index.php?threads/teensy-4-1-available-pwm-frequencies.63168/
-// https://forum.pjrc.com/index.php?threads/using-teensy-4-1-to-generate-square-wave-at-precise-frequency.75798/
+/* 
+ NOTE that this function does not return the ACTUAL set frequency
+ NOTE: the electrical calibration of LEDs DOES DEPEND on the GSCLK frequency and is different for PWM/ESPWM 
+ PP tested 20250314 - 
+ GCLK frequencies (Mhz) that can be set with the Teensy 4.1 running at 600 Mhz have been approximately measured with an oscilloscope
+ I obtained 30.0, 25.0, [], 18.8, 16.4, 14.9, 13.7, 12.5, 11.5, 10.7, 10.0, 8.79, 7.93, 7.20, 6.47, 5.98 .... 
+ 
+This seems to correspond to 150 MHz divided by a divisor which is in the range [5..25]
+ 
+If this is true, then the exact frequencies are:
+Clock MHz	Divisor 150/	Cycle (ms)	Update (Hz)
+30.000	5	2.185	457.771
+25.000	6	2.621	381.476
+21.429	7	3.058	326.979
+18.750	8	3.495	286.107
+16.667	9	3.932	254.317
+15.000	10	4.369	228.885
+13.636	11	4.806	208.078
+12.500	12	5.243	190.738
+11.538	13	5.680	176.066
+10.714	14	6.117	163.490
+10.000	15	6.554	152.590
+9.375	16	6.990	143.053
+8.824	17	7.427	134.638
+8.333	18	7.864	127.159
+7.895	19	8.301	120.466
+7.500	20	8.738	114.443
+7.143	21	9.175	108.993
+6.818	22	9.612	104.039
+6.522	23	10.049	99.515
+6.250	24	10.486	95.369
+6.000	25	10.923	91.554
+5.769	26	11.359	88.033
+5.556	27	11.796	84.772
+5.357	28	12.233	81.745
+5.172	29	12.670	78.926
+5.000	30	13.107	76.295
+4.839	31	13.544	73.834
+4.688	32	13.981	71.527
+
+30 MHz transmission is iffy 
+I would recommend 25 MHz for PWM and 10 for ESPWM
+
+TODO: SHOULD REPORT THE ACTUAL FREQUENCY!!!!!!
+WIRING: consider using a FLEXPWM pin as described in the code in the links
+
+how is the frequency determined by Resolution and clock??
+https://www.pjrc.com/teensy/td_pulse.html
+https://forum.pjrc.com/index.php?threads/teensy-4-1-available-pwm-frequencies.63168/
+https://forum.pjrc.com/index.php?threads/using-teensy-4-1-to-generate-square-wave-at-precise-frequency.75798/
+
+*/
 
 
 float TLC5948::setGSCLK( float frequency ) {
-  float f = constrain ( frequency , _GSCLK_MIN_MHZ, _GSCLK_MAX_MHZ ) ;
+  float f = constrain ( frequency , GSCLK_MIN_HZ, GSCLK_MAX_HZ ) ;
   pinMode(_GS_PIN, OUTPUT);
   analogWrite(_GS_PIN, 0) ;
-  analogWriteFrequency(_GS_PIN, f * 1000000.0 ) ;                                
+  analogWriteFrequency(_GS_PIN, f ) ;                                
   analogWriteResolution(_ANALOG_WRITE_BIT_RES);
   analogWrite(_GS_PIN, (1 << (_ANALOG_WRITE_BIT_RES-1))); // set 50% duty cycle
   return f ;                                                                   
 }
 
-void TLC5948::latch() {                                                           // TODO: add output to one of the info pin?
-  int latchDelay = LATCHDELAYUS; // microseconds                                  
+void TLC5948::latch() {
+  int latchDelay = LATCH_DELAY_US; // microseconds                                  
   delayMicroseconds(latchDelay);
   digitalWrite(_LAT_PIN, HIGH);
   delayMicroseconds(latchDelay);
@@ -81,7 +125,7 @@ void TLC5948::latch() {                                                         
 }
 
 void TLC5948::sendFramesSPI() {
-  SPI.beginTransaction(_SPIset);
+  SPI.beginTransaction( SPISettings(GOAL_SCLK_HZ, MSBFIRST, SPI_MODE0) );
   for (int i = 0; i < _nFrames; i++) {
     inFrames[i] = SPI.transfer16(outFrames[i]);
   }
@@ -416,7 +460,7 @@ void TLC5948::printMask() {   // Print mask
     chPerLED = 0;
     tMASK = mask[cL];
     tDRI  = tMASK >> 16; // take the upper bits for driver
-    Serial.printf("LED%02d:   ", cL);
+    Serial.printf("LED%02d (%c): ", cL, ('@'+cL) );
     for (int tD = 0; tD < nTLCs; tD++) { // for each driver
       for (int tC = 0; tC < nch; tC++) { // for each channel
         if ((tDRI == tD) && ((tMASK >> tC) & 1)) { // if bit is 1 and driver is correct
@@ -428,7 +472,7 @@ void TLC5948::printMask() {   // Print mask
       }
       Serial.print(" ");
     }
-    Serial.printf("(%02d) (%c)\n", chPerLED, 'A'+cL);
+    Serial.printf(" [%02d] LED%02d (%c)\n", chPerLED, cL, ('@'+cL));
   }
 }
 

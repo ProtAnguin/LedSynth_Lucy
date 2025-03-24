@@ -6,9 +6,10 @@ float calibStep = 0.1;
 float calibTo   = 4.0;
 int calibMeasureTime_ms = 400;
 
-int beginLed = 0;
+int beginLed = 1;
 int endLed = D_NLS-1;
 
+// sensitivity values of OPT4048
 float OPTcalibValues[D_NLS] = {
   1.000000,
   1.963336,
@@ -40,17 +41,18 @@ void calibHelp(String inStr) {
   Serial.println("  'exit' to exit the Protocol builder");
   Serial.println("  'help' to see this again");
   Serial.println("");
-  Serial.printf ("  'set l X' to set the LED                                                        Current value: %d\n", LED.curr);
-  Serial.printf ("  'set a X.XX' to set the attenuation (1 = 10%)                                   Current value: %1.4f log\n", LED.logVal);
+  Serial.printf ("  'set l X' to set the LED number                                                 Current value: %d\n", LED.curr);
+  Serial.printf ("  'set a X.XX' to set the log attenuation (0 = 100%, 1 = 10%, 2 = 1%, 3=0.1%)     Current value: %1.4f log\n", LED.logVal);
   Serial.println("  'go' to set the LED at attenuation and measure in 100 ms intervals until the measurement time is reached");
   Serial.println("");
   Serial.printf ("  'set f X.XX' set the intensity to start from (positive decimal values)          Current value: %1.4f log\n", calibFrom);
   Serial.printf ("  'set s X.XX' set the intensity step (positive decimal values)                   Current value: %1.4f log\n", calibStep);
   Serial.printf ("  'set t X.XX' set the intensity to go to (positive decimal values)               Current value: %1.4f log\n", calibTo);
   Serial.printf ("  'set m X'    set the measurement time of the OPT sensor [ms]                    Current value: %d ms\n", calibMeasureTime_ms);
-  Serial.printf ("  'set b X'    start with the LED                                                 Current value: %d \n", beginLed);
-  Serial.printf ("  'set e X'    end with the LED                                                   Current value: %d \n", endLed);
+  Serial.printf ("  'set b X'    start with the LED#                                                Current value: %d \n", beginLed);
+  Serial.printf ("  'set e X'    end with the LED#                                                  Current value: %d \n", endLed);
   Serial.println("  'run' the protocol with every LED at attenuation steps, produces CSV (sensitivity factors of the OPT are incorporated in the result)");
+  Serial.println("  'print'      prints the log intensity to PWM/DC conversion table in the range set by (f,s,t)");
   Serial.println("------------------------------------------------------------------------------------------------------------------------------------------- END -");
 }
 
@@ -126,7 +128,7 @@ void calibRun(String command) {
   setOe(1);
   for (float j = calibFrom; j <= calibTo; j+=calibStep) { // dekaLOG values (will be divided by 10.0 later)
     LED.logVal = j;
-    Serial.printf("%1.3f, ", LED.logVal);
+    Serial.printf("%1.3f", LED.logVal);
 
     for (int i = beginLed; i <= endLed; i++) { // curr led index                                                  // PP TODO check <=, <
       LED.curr = i;
@@ -136,10 +138,12 @@ void calibRun(String command) {
       delay(calibMeasureTime_ms);
       OPTwhite = opt.getADCCh3();
       setRainbow(OFF_LOG_VALUE);
-      
+      if (OPTwhite < 1)
+        { OPTwhite = 1 ; }
+
       // Serial.printf("%16.4f,", float(OPTwhite) * OPTcalibValues[LED.curr]);
-      // Serial.printf("%6.4f, ", log10(float(OPTwhite)));
-      Serial.printf("%12d, ", OPTwhite);
+      Serial.printf(",%1.5f", log10(float(OPTwhite)));
+      // Serial.printf("%12d, ", OPTwhite);
 
       if (Serial.available() > 0) {
         command = Serial.readStringUntil('*');
@@ -151,6 +155,16 @@ void calibRun(String command) {
     Serial.println(); // go to new line boy!
   }
   setOe(0);
+}
+
+// will print the logi2pwm table
+void calibPrint(String command) {
+  if (command.substring(0,5) != "print") 
+    { return ; }
+  Serial.println("%% Table for converting logi to PWM/DC values (calculated with pwm2logi)");
+  Serial.println("%% logi, fullch, pwm, dc, mode, log10(powerin), log10(powerout), error");
+  for (float j = calibFrom ; j<= calibTo; j+=calibStep) 
+        tlc.printLogi2pwm(j);
 }
 
 // calib function
@@ -192,8 +206,9 @@ void calibEnvironment() {
       setCalibFromSerial( command );
 			calibGo( command );
       calibRun( command );
-
+      calibPrint ( command );
 			calibHelp( command );
+
     }
 
     trigReceived = false;

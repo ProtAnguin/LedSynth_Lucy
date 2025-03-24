@@ -1,8 +1,15 @@
-// TODO: implement a voltage divider on TRIGINPIN with a 4k7 and a 10k0 resistors to step down 10 V TTL to 3.3V
 // TODO: label the BNC pins on the front plate
 // TODO: write up an user manual 
 // TODO: discuss implementation of PWL lookup table to correct for low intensity droop
 // TODO: search for <TODO:> and take care of any
+// TODO: make a command for reporting all settings
+
+
+
+
+// TODO: RAMP PROTOCOL IS NOT WORKING CORRECTLY (seems to have a roundoff error!!!!)
+
+
 
 #define LEDSYNTHNAME          "Lucy"
 
@@ -21,12 +28,13 @@
 #define D_TRIGOUTLEN          5                                     // default trigger length [ms]
 
 #define LED00CHAR             '@'                                   // ASCII goes from 40... '@ABCD...'
-#define MAXWAITMS             10000                                 // how long to wait for the trigger in
+#define MAXWAITMS             10000                                 // how long to wait for the trigger in used only in waitTrigUpdate for debugging the trigger
 
 // Defines so the device can do a self reset
 #define RESTART_ADDR 0xE000ED0C
 #define READ_RESTART() (*(volatile uint32_t *)RESTART_ADDR)
 #define WRITE_RESTART(val) ((*(volatile uint32_t *)RESTART_ADDR) = (val))
+
 
 struct selectedLED {
   int8_t   curr    = 0;           // 
@@ -70,10 +78,6 @@ float    LogIn [N_PWL][D_NLS]  = { 0 } ;  // placeholder for desired logI values
 float    LogOut[N_PWL][D_NLS] = { 0 } ;   // placeholder for output  logI values if PWL interpolation is used to achieve this
 float    isoLog[N_ISOBANKS][D_NLS];  // placeholders for isoLog banks, it will be populated in Setup by loadFromEEPROM
 int      isoLogCurr = 0; // which line of isoLog to read values from
-
-float   Ibanks[2][D_NLS] = { 0 } ;
-uint8_t N_MAXBANK = (sizeof(Ibanks)/sizeof(Ibanks[0]))-1; // number of rows in Ibanks
-uint8_t N_USEBANK = 0; // index of intensity bank (Ibanks) to be used
 
 // QUESTION: is this actually used by protocols?
 

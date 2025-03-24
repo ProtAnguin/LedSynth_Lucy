@@ -63,9 +63,10 @@ NOTE: USING '!' for update
 #include "easter.h"
 #include "storeDataToEEPROM.h"
 
+
 String input = "help";   //used for storing incoming strings, set to <prot> to go into ProtocolBuilder on startup
 String command = ""; // used to store the command that the user sends via Serial port (empty at Init)
-
+char delimiter = '*' ;
 TLC5948 tlc(D_nTLCs, D_NLS, CHmask);
 
 SparkFun_OPT4048 opt;
@@ -86,9 +87,10 @@ void envelope(bool state) {
 }
 
 void update() {
-  digitalWrite(INFOPIN,1) ; 
-  tlc.update() ; 
+  // the INFOpin will go rising when the update is finished
   digitalWrite(INFOPIN,0) ; 
+  tlc.update() ; 
+  digitalWrite(INFOPIN,1) ; 
   // Serial.print("!") ; 
 }
 
@@ -153,7 +155,7 @@ void storeIso() {
     else if ((LED.curr<0) || (LED.curr>D_NLS))
       Serial.println("aborted: current LED number is impossible") ;
     else if ((LED.logVal < 0) || (LED.logVal > 4 ))
-      Serial.println("aborted: log value out of range [0 to 4]") ;            
+      Serial.println("aborted: log value out of range [0 .. 4]") ;            
     else {
       Serial.println("success") ; 
       isoLog[isoLogCurr][LED.curr] = LED.logVal;
@@ -188,22 +190,20 @@ void mainPrintLeds() {
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
 void setup() {
-  Serial.begin(SERIAL_BAUD_RATE);
-  Serial.setTimeout(SERIAL_TIMEOUT);
-
-  tlc.begin();                            // TODO: implement a frequency change command!!!!!!!!!!!
-
-  Wire.begin();
-
   pinMode(TRIGOUTPIN,   OUTPUT);
   pinMode(ENVELOPEPIN,  OUTPUT);
   pinMode(INFOPIN,      OUTPUT);               
   pinMode(TRIGINPIN,    INPUT_PULLUP);
 
-  attachInterrupt(digitalPinToInterrupt(TRIGINPIN), trigInISR, RISING); // interrupt routine to catch the trigIn flag
+  Serial.begin(SERIAL_BAUD_RATE);
+  Serial.setTimeout(SERIAL_TIMEOUT);
+  tlc.begin();                            
+  Wire.begin();
+
+  // interrupt routine to catch the trigIn flag
+  attachInterrupt(digitalPinToInterrupt(TRIGINPIN), trigInISR, RISING); 
 
   loadFromEEPROM();  // Load stored data into isoLog
-
   mainWelcome();
 }
 
@@ -212,11 +212,11 @@ void setup() {
 // LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP LOOP
 void loop() {
   if (Serial.available() > 0) {
-    input = Serial.readStringUntil('*');
+    input = Serial.readStringUntil(delimiter);
     change = true;
   }
 
-  if (trigReceived == true) update() ;              // update on external trigger ???
+  if (trigReceived == true) update() ;              // update TLC on external trigger 
 
   // TODO: implement ECHO on / off to switch all printf commands off if needed!
 
@@ -236,20 +236,30 @@ void loop() {
     else if (input.substring(0, 5) == "print")         tlc.printCPWM();
     else if (input.substring(0, 5) == "frame")         tlc.printFrames();
     else if (input.substring(0, 6) == "wiring")        tlc.printMask();
-
+    else if (input.substring(0, 5) == "param")    {    Serial.printf("command delimiter: %c\n",delimiter);
+                                                       tlc.C_ESPWM  ? Serial.println("mode ESPWM") : Serial.println("mode PWM");
+                                                       tlc.C_TMGRST ? Serial.println("timing reset on") : Serial.println("timing reset off");
+                                                       tlc.C_DSPRPT ? Serial.println("display repeat on") : Serial.println("display repeat off");
+                                                       tlc.C_BLANK  ? Serial.println("blanking on") : Serial.println("blanking off");
+                                                       Serial.printf("Serial clock goal %1.3f MHz\n",float(tlc.GOAL_SCLK_HZ)/1000000.0);                                                       
+                                                       Serial.printf("Grayscale clock goal %1.3f MHz\n",float(tlc.GOAL_GSCLK_HZ)/1000000.0);                                                       
+                                                       LED.all ? Serial.printf("Rainbow selected.\n") : Serial.printf("Led%02i selected.\n",LED.curr);
+                                                  }    
+    else if (input.substring(0,5)  == "delim")     { if (delimiter=='*') delimiter=';'; else delimiter='*'; Serial.printf("command delimiter: %c\n",delimiter);  }
     else if (input.substring(0, 5) == "espwm")     {   tlc.C_ESPWM  = constrain(input.substring(5).toInt(),0,1) ; 
                                                        tlc.C_ESPWM  ? Serial.println("mode ESPWM") : Serial.println("mode PWM");}
-
     else if (input.substring(0, 5) == "blank")     {   tlc.C_BLANK  = constrain(input.substring(5).toInt(),0,1) ; 
                                                        tlc.C_BLANK  ? Serial.println("blanking on") : Serial.println("blanking off");} 
-
     else if (input.substring(0, 6) == "tmgrst")    {   tlc.C_TMGRST = constrain(input.substring(6).toInt(),0,1) ; 
                                                        tlc.C_TMGRST ? Serial.println("timing reset on") : Serial.println("timing reset off");} 
-
     else if (input.substring(0, 6) == "dsprpt")    {   tlc.C_DSPRPT = constrain(input.substring(6).toInt(),0,1) ; 
                                                        tlc.C_DSPRPT ? Serial.println("display repeat on") : Serial.println("display repeat off");} 
-
-    else if (input.substring(0, 5) == "gsclk")     {   Serial.printf ("GSCLK set to %f MHz\n", tlc.setGSCLK (input.substring(5).toFloat()) ) ; }
+    else if (input.substring(0,4 ) == "sclk")      {  tlc.GOAL_SCLK_HZ  = input.substring(4).toFloat()*1000000; 
+                                                      Serial.printf("Serial clock frequency goal %1.3f MHz\n",float(tlc.GOAL_SCLK_HZ)/1000000.0); }
+    else if (input.substring(0,4 ) == "gclk")      {  tlc.GOAL_GSCLK_HZ = input.substring(4).toFloat()*1000000; 
+                                                      tlc.setGSCLK(tlc.GOAL_GSCLK_HZ); 
+                                                      Serial.printf("Grayscale clock frequency goal %1.3f MHz. See note in help\n",float(tlc.GOAL_GSCLK_HZ)/1000000.0);                                                       
+                                                      }   
 
     else if (input.substring(0, 2) == "oe")        {   setOe( 1 ); Serial.println("output on" ); }
     else if (input.substring(0, 2) == "od")        {   setOe( 0 ); Serial.println("output off"); }
@@ -262,8 +272,9 @@ void loop() {
     else if (input.substring(0, 3) == "toc")          delay(40);     // this is about 6 frames at 150 Hz, TODO should not be hard-coded
     else if (input.substring(0, 3) == "del")          delay(constrain(input.substring(3).toInt(),0,1000));
     
-    else if (input.substring(0, 4) == "trig")         trigOut(TRIGOUTPIN,1);
+    else if (input.substring(0, 4) == "trig")         trigOut(TRIGOUTPIN,1); // trigger out for 1 ms
 
+    // control LEDS
     else if ((input[0]>='A') & (input[0]<='Z'))    {   LED.curr = constrain (((input[0]=='Z' ? 0 : input[0]-LED00CHAR)),0,D_NLS);
                                                        LED.all  = false;
                                                        Serial.printf("Led%02i ",LED.curr); }
@@ -277,13 +288,6 @@ void loop() {
     else if (input.substring(0, 3) == "all")       {   LED.all = true;
                                                        Serial.printf("Rainbow ");
                                                    }
-    else if (input.substring(0, 3) == "set")       {   LED.all = false;
-                                                       LED.curr = constrain (input.substring(3,5).toInt(),0,D_NLS);
-                                                       LED.logVal = (input.substring(5, 9).toInt())/1000.0;
-                                                       setLog();
-                                                       Serial.printf("@log %1.3f\n",LED.logVal);
-                                                       update();     // the most important command
-                                                   } 
     else if (input.substring(0,3)  == "log")       {   LED.logVal = input.substring(3).toFloat() ;
                                                        Serial.printf("@log %1.3f\n",LED.logVal);                                
                                                        setLog();
@@ -312,20 +316,30 @@ void loop() {
                                                       Serial.println("@off\n");
                                                       setPwm();
                                                    }       
+    else if (input.substring(0, 3) == "set")       {   LED.all = false;
+                                                       LED.curr = constrain (input.substring(3,5).toInt(),0,D_NLS);
+                                                       LED.logVal = (input.substring(5, 9).toInt())/1000.0;
+                                                       setLog();
+                                                       Serial.printf("@log %1.3f\n",LED.logVal);
+                                                       update();     // the most important command
+                                                   } 
+
+    // EEPROM
     else if (input.substring(0, 5) == "store")     {  storeIso() ; } // iffy
     else if (input.substring(0, 6) == "update")    {  Serial.println("update not implemented yet.") ; }     // TODO: implement as auto update (no need to use '!')
     else if (input.substring(0, 4) == "bank")      {  isoLogCurr  = constrain(input.substring(4).toInt(),0,N_ISOBANKS-1);
                                                       Serial.printf("bank selected %d", isoLogCurr);
                                                       peekFromEEPROM();
                                                    }
-    else if (input.substring(0,4 ) == "pwlx")      {  Serial.println("pwlx not implemented yet.") ; }
-    else if (input.substring(0,4 ) == "pwly")      {  Serial.println("pwly implemented yet.") ; }
+    // else if (input.substring(0,4 ) == "pwlx")      {  Serial.println("pwlx not implemented yet.") ; }
+    // else if (input.substring(0,4 ) == "pwly")      {  Serial.println("pwly implemented yet.") ; }
+    
     else if (input.substring(0,6 ) == "eeprom")    {
-      if (input.substring(6,10 ) == "peek") { peekFromEEPROM(); }
-      if (input.substring(6,10 ) == "load") { loadFromEEPROM(); }
-      if (input.substring(6,10 ) == "save") { saveToEEPROM(); }
+      if (input.substring(6,10 ) == "peek")  { peekFromEEPROM(); }
+      if (input.substring(6,10 ) == "load")  { loadFromEEPROM(); }
+      if (input.substring(6,10 ) == "save")  { saveToEEPROM(); }
       if (input.substring(6,11 ) == "teser") { resetEEPROM(); }
-      if (input.substring(6,9 ) == "set")   { setDataValue(input.substring(9,11).toInt(), input.substring(11,13).toInt(), input.substring(13).toFloat()); }
+      if (input.substring(6,9 )  == "set")   { setDataValue(input.substring(9,11).toInt(), input.substring(11,13).toInt(), input.substring(13).toFloat()); }
     }
     else { ; } // we haven't understood, so Serial.println("?") is possible
     
