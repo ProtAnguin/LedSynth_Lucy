@@ -224,7 +224,7 @@ void loop() {
     //----------------------------------------------------------------------------------------------------------------------------- Single line protocols
     // shouldnt this be "else ifs??????"
     if (     input.substring(0, 5) == "reset")         WRITE_RESTART(0x5FA0004);
-    else if (input.substring(0, 5) == "hello")         mainWelcome();
+    else if (input.substring(0, 5) == "welc")          mainWelcome();
     else if (input.substring(0, 4) == "help")          mainHelp();
     else if (input.substring(0, 4) == "leds")          mainPrintLeds();
     else if (input.substring(0, 4) == "prot")          protocolEnvironment();
@@ -255,11 +255,11 @@ void loop() {
     else if (input.substring(0, 6) == "dsprpt")    {   tlc.C_DSPRPT = constrain(input.substring(6).toInt(),0,1) ; 
                                                        tlc.C_DSPRPT ? Serial.println("display repeat on") : Serial.println("display repeat off");} 
     else if (input.substring(0,4 ) == "sclk")      {  tlc.GOAL_SCLK_HZ  = input.substring(4).toFloat()*1000000; 
-                                                      Serial.printf("Serial clock frequency goal %1.3f MHz\n",float(tlc.GOAL_SCLK_HZ)/1000000.0); }
+                                                      Serial.printf("Serial clock frequency goal %6.3f MHz\n",float(tlc.GOAL_SCLK_HZ)/1000000.0); }
     else if (input.substring(0,4 ) == "gclk")      {  tlc.GOAL_GSCLK_HZ = input.substring(4).toFloat()*1000000; 
                                                       tlc.setGSCLK(tlc.GOAL_GSCLK_HZ); 
-                                                      Serial.printf("Grayscale clock frequency goal %1.3f MHz. See note in help\n",float(tlc.GOAL_GSCLK_HZ)/1000000.0);                                                       
-                                                      }   
+                                                      Serial.printf("Grayscale clock frequency goal %6.3f MHz. See note in help.\n",float(tlc.GOAL_GSCLK_HZ)/1000000.0); }
+    else if (input.substring(0,4 ) == "clks")      {  Serial.printf("Serial    clock frequency %6.3f MHz\nGrayscale clock frequency %6.3f MHz\n", float(tlc.GOAL_SCLK_HZ)/1000000.0, float(tlc.GOAL_GSCLK_HZ)/1000000.0); }
 
     else if (input.substring(0, 2) == "oe")        {   setOe( 1 ); Serial.println("output on" ); }
     else if (input.substring(0, 2) == "od")        {   setOe( 0 ); Serial.println("output off"); }
@@ -268,8 +268,6 @@ void loop() {
     else if (input.substring(0, 1) == "?")         {  waitTrigUpdate(100) ; } // TODO: do we need this?
     else if (input.substring(0, 4) == "wait")      {  waitTrigUpdate(constrain(input.substring(4).toInt(),0,MAXWAITMS)) ; }
     
-    else if (input.substring(0, 3) == "tic")          delay(7) ;     // this is about 1 frame at 150 Hz, TODO should not be hard-coded
-    else if (input.substring(0, 3) == "toc")          delay(40);     // this is about 6 frames at 150 Hz, TODO should not be hard-coded
     else if (input.substring(0, 3) == "del")          delay(constrain(input.substring(3).toInt(),0,1000));
     
     else if (input.substring(0, 4) == "trig")         trigOut(TRIGOUTPIN,1); // trigger out for 1 ms
@@ -311,11 +309,7 @@ void loop() {
     else if (input.substring(0,4)  == "full")      {  LED.pwmVal = tlc.MAX_PWM ; LED.dcVal = tlc.MAX_DC; LED.bcVal = tlc.MAX_BC;
                                                       Serial.println("@full ");
                                                       setDc(); setBc(); setPwm();
-                                                   }
-    else if (input.substring(0,3)  == "off")       {  LED.pwmVal = 0 ;
-                                                      Serial.println("@off\n");
-                                                      setPwm();
-                                                   }       
+                                                   }     
     else if (input.substring(0, 3) == "set")       {   LED.all = false;
                                                        LED.curr = constrain (input.substring(3,5).toInt(),0,D_NLS);
                                                        LED.logVal = (input.substring(5, 9).toInt())/1000.0;
@@ -325,11 +319,10 @@ void loop() {
                                                    } 
 
     // EEPROM
-    else if (input.substring(0, 5) == "store")     {  storeIso() ; } // iffy
     else if (input.substring(0, 6) == "update")    {  Serial.println("update not implemented yet.") ; }     // TODO: implement as auto update (no need to use '!')
     else if (input.substring(0, 4) == "bank")      {  isoLogCurr  = constrain(input.substring(4).toInt(),0,N_ISOBANKS-1);
                                                       Serial.printf("bank selected %d", isoLogCurr);
-                                                      peekFromEEPROM();
+                                                      printIsoLog();
                                                    }
     // else if (input.substring(0,4 ) == "pwlx")      {  Serial.println("pwlx not implemented yet.") ; }
     // else if (input.substring(0,4 ) == "pwly")      {  Serial.println("pwly implemented yet.") ; }
@@ -339,6 +332,7 @@ void loop() {
       if (input.substring(6,10 ) == "load")  { loadFromEEPROM(); }
       if (input.substring(6,10 ) == "save")  { saveToEEPROM(); }
       if (input.substring(6,11 ) == "teser") { resetEEPROM(); }
+      if (input.substring(6,11 ) == "print") { printIsoLog(); }
       if (input.substring(6,9 )  == "set")   { setDataValue(input.substring(9,11).toInt(), input.substring(11,13).toInt(), input.substring(13).toFloat()); }
     }
     else { ; } // we haven't understood, so Serial.println("?") is possible

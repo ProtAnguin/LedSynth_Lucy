@@ -49,7 +49,7 @@ class TLC5948 {
     bool printFramesTLCflag = false;
 
     int GOAL_SCLK_HZ           = 2000000; // Serial clock speed in Hz
-    int GOAL_GSCLK_HZ          = 2000000;
+    int GOAL_GSCLK_HZ          = 25000000;
     // float GOAL_GSCLK_MHZ = 8.0 ; // Gray scale closk speed in MHz (10 MHz clock gives 152 Hz repeat, with ESPWM ON and PWM > 4 it brings it up to 600 Hz)
     // float GSCLK_MIN_MHZ = 1.0  ;
     // float GSCLK_MAX_MHZ = 14.1 ;                  // PROLLY NUT NECESSARY TO HAVE THESE AS VARIABLES?

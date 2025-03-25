@@ -49,6 +49,21 @@ void saveToEEPROM() {
     Serial.println("EEPROM save completed.");
 }
 
+void printIsoLog() {
+    Serial.println("\nLog values in workspace:");
+    Serial.println("-------------------------------");
+
+    for (int i = 0; i < M_ROWS; i++) {
+        if(i == isoLogCurr) { Serial.print("X\t"); } else { Serial.print("\t"); }
+
+        for (int j = 0; j < N_COLUMNS; j++) {
+            Serial.print(isoLog[i][j], 3);  // Print float with 6 decimal places
+            Serial.print("\t");
+        }
+        Serial.println();
+    }
+}
+
 // DANGER: force EEPROM isoLog to all zeros
 void resetEEPROM() {
     for (int i = 0; i < M_ROWS; ++i) {
@@ -65,7 +80,7 @@ void setDataValue(int row, int col, float value) {
     if (row >= 0 && row < M_ROWS && col >= 0 && col < N_COLUMNS) {
         isoLog[row][col] = value;
 
-        Serial.printf(" isoLog at [%2d][%2d] SET to value %1.3f (this does not SAVE to EEPROM)\n", row, col, value);
+        Serial.printf(" isoLog at [%2d][%2d] SET to value %1.3f (this does not SAVE to EEPROM)\n", row, col, isoLog[row][col]);
     } else {
         Serial.println("Error: Index out of bounds!");
     }

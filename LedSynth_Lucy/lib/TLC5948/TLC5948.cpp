@@ -41,12 +41,8 @@ void TLC5948::begin() {
   pinMode(_LAT_PIN, OUTPUT);
   digitalWrite(_LAT_PIN, LOW);
 
-  setGSCLK (GOAL_GSCLK_HZ ) ; 
-  // analogWriteFrequency(_GS_PIN, _GOAL_GSCLK_HZ);                                // TODO: make frequency user - selectable!!!!
-  // analogWriteResolution(_ANALOG_WRITE_BIT_RES);
-  // analogWrite(_GS_PIN, (1 << (_ANALOG_WRITE_BIT_RES-1))); // set 50% duty cycle
-
-  // clean up the chips?
+  setGSCLK (GOAL_GSCLK_HZ ) ;
+  
   update();
   update();
 }

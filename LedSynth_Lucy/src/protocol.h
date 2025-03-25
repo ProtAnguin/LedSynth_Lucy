@@ -45,7 +45,7 @@ void setRainbow (float logVal) {                                                
 
 int nlsUsed(int arr[]) {
   int sumVal = 0;
-  for (int i = 0; i < D_NLS; i++) {
+  for (int i = 1; i < D_NLS; i++) {
     sumVal += arr[i];
   }
   return sumVal;
@@ -56,26 +56,26 @@ void chooseLED(String inS) {
 
   if (inS == "f" || inS == "n") { // first or next
     if (inS == "f") {
-      LED.curr = -1;
+      LED.curr = 0;
       LED.wrapped = false;
     }
     do {
       LED.curr++;
       if (LED.curr >= D_NLS) {
-        LED.curr = 0;
+        LED.curr = 1;
         LED.wrapped = true;
       }
     } while(mask[LED.curr] == 0);
   }
-  if (inS == "l" || inS == "p") { // first or next
+  if (inS == "l" || inS == "p") { // last or previous
     if (inS == "l") {
       LED.curr = D_NLS;
       LED.wrapped = false;
     }
     do {
       LED.curr--;
-      if (LED.curr < 0) {
-        LED.curr = D_NLS-1;
+      if (LED.curr < 1) {
+        LED.curr = D_NLS;
         LED.wrapped = true;
       }
     } while (mask[LED.curr] == 0);
@@ -95,18 +95,18 @@ void protReport(String inStr) {
   if (inStr.substring(0, 6) != "report") { return; }
   
   Serial.println("Current settings: ");
-  Serial.println("  Offset                 " + String(p_ofs) + " ms");
-  Serial.println("  Duration               " + String(p_dur) + " ms");
-  Serial.println("  Pause                  " + String(p_pau) + " ms");
-  Serial.println("  Wait                   " + String(p_wait) + " ms");
-  Serial.println("  Num of LEDs            " + String(nlsUsed(mask)));
-  Serial.println("  Vlogi from:            " + String(v_f) + " log");
-  Serial.println("  Vlogi step:            " + String(v_s) + " log");
-  Serial.println("  Vlogi to:              " + String(v_t) + " log");
-  Serial.println("  General attenuation    " + String(genAtt) + " log");
-  Serial.println("  Adaptation attenuation " + String(adapAtt) + " log");
-  Serial.print(  "  Wait for TTLin:        "); if (waitForTrigIn) { Serial.println("YES"); } else { Serial.println("NO"); }
-  Serial.print(  "  Send TTLout:           "); if (sendTrigOut) { Serial.println("YES"); } else { Serial.println("NO"); }
+  Serial.printf( "  Offset:                 %d ms\n", p_ofs);
+  Serial.printf( "  Duration:               %d ms\n", p_dur);
+  Serial.printf( "  Pause:                  %d ms\n", p_pau);
+  Serial.printf( "  Wait:                   %d ms\n", p_wait);
+  Serial.printf( "  Num of LEDs:            %d\n", nlsUsed(mask));
+  Serial.printf( "  Vlogi from:             %5.4f log\n", v_f);
+  Serial.printf( "  Vlogi step:             %5.4f log\n", v_s);
+  Serial.printf( "  Vlogi to:               %5.4f log\n", v_t);
+  Serial.printf( "  General attenuation     %5.4f log\n", genAtt);
+  Serial.printf( "  Adaptation attenuation  %5.4f log\n", adapAtt);
+  Serial.print(  "  Wait for TTLin:         "); if (waitForTrigIn) { Serial.println("YES"); } else { Serial.println("NO"); }
+  Serial.print(  "  Send TTLout:            "); if ( sendTrigOut ) { Serial.println("YES"); } else { Serial.println("NO"); }
   Serial.println();
 } // end protReport
 
@@ -338,7 +338,7 @@ void vlogiProtocol(String inStr) {
   
   while (command.substring(0, 4) != "stop" && !endVlogi) {
     if ((waitForTrigIn and trigReceived) or !waitForTrigIn) {
-      Serial.printf("Vlogi: %2d LEDS at %5.2f log \n", nlsUsed(mask), v_fac);
+      Serial.printf("Vlogi: %2d LEDS at %5.4f log \n", nlsUsed(mask), v_fac);
       if (waitForTrigIn && !didOfset) {
         delay(p_ofs);
         didOfset = true;
@@ -376,7 +376,7 @@ void rampProtocol(String inStr) {
   if (inStr.substring(0, 4) != "ramp") { return; }
   bool didOfset = false;
 
-  int32_t t_ramp_log = 0; // temp pwm holder to omit sending out flashes if LED already did its best (preserve the cell)
+  float t_ramp_log = 0; // temp pwm holder to omit sending out flashes if LED already did its best (preserve the cell)
   
   Serial.println("RAMP protocol started, input 'stop' to finish");
   if (waitForTrigIn) Serial.println("    Waiting for external trigger...");
@@ -401,7 +401,7 @@ void rampProtocol(String inStr) {
       
       Serial.println("Ramp: Led " + String(LED.curr) + " at " + String(v_fac) + " log of iso intensity.");
 
-      t_ramp_log = v_fac+genAtt+isoLog[isoLogCurr][LED.curr]; // TODO: this will not work as it expects a pwm value, thanks LOGs!
+      t_ramp_log = v_fac+genAtt+isoLog[isoLogCurr][LED.curr];
 
       if (t_ramp_log < 0) t_ramp_log = OFF_LOG_VALUE; // turn blinking off as we already tested the max possible output in this ramp
 
@@ -477,11 +477,12 @@ void adapProtocol(String inStr) {
     if( adapMask[i] ){
       tlc.setlog(i, isoLog[isoLogCurr][i]+adapAtt);
     }
+    tlc.update();
   }
   
   protReport( "report" );
   Serial.println("ADDAPTATION protocol started, input 'stop' to finish");
-  Serial.println("  General attenuation for stimulus LEDs is " + String(genAtt));
+  Serial.println("     General attenuation for  stimulus LEDs  is " + String(genAtt));
   Serial.println("  Adaptation attenuation for adaptation LEDs is " + String(adapAtt));
   if (waitForTrigIn) Serial.println("    Waiting for external trigger...");
   
@@ -498,6 +499,7 @@ void adapProtocol(String inStr) {
       }
 
       tlc.setlog( LED.curr, isoLog[isoLogCurr][LED.curr]+genAtt);
+      tlc.update();
       envelope(1);
       delay(p_dur);
       if ( adapMask[LED.curr] ) {
@@ -506,6 +508,7 @@ void adapProtocol(String inStr) {
       else {
         tlc.setlog( LED.curr, OFF_LOG_VALUE );
       }
+      tlc.update();
       
       envelope(0);
       delay(p_pau);

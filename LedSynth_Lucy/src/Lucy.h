@@ -1,15 +1,7 @@
 // TODO: label the BNC pins on the front plate
 // TODO: write up an user manual 
-// TODO: discuss implementation of PWL lookup table to correct for low intensity droop
 // TODO: search for <TODO:> and take care of any
 // TODO: make a command for reporting all settings
-
-
-
-
-// TODO: RAMP PROTOCOL IS NOT WORKING CORRECTLY (seems to have a roundoff error!!!!)
-
-
 
 #define LEDSYNTHNAME          "Lucy"
 
