@@ -40,7 +40,7 @@ class TLC5948 {
     uint8_t C_LATTMG = 3; // 2 bits
     uint8_t C_LSDVLT = 1; // 2 bits
     uint8_t C_LODVLT = 1; // 2 bits
-    uint8_t C_ESPWM  = 1; // 1 bit
+    uint8_t C_ESPWM  = 0; // 1 bit
     uint8_t C_TMGRST = 1; // 1 bit
     uint8_t C_DSPRPT = 1; // 1 bit
     uint8_t C_BLANK  = 1; // 1 bit
