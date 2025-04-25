@@ -7,14 +7,10 @@
 
 
 
-// TODO: RAMP PROTOCOL IS NOT WORKING CORRECTLY (seems to have a roundoff error!!!!)
-
-
-
 #define LEDSYNTHNAME          "Lucy"
 
-#define D_nTLCs               3
-#define D_NLS                 20                                    // rainbow LEDs and zero order
+#define D_nTLCs               1
+#define D_NLS                 17                                    // rainbow LEDs and zero order
 #define N_PWL                 4
 #define N_ISOBANKS            10
 
@@ -52,26 +48,23 @@ struct selectedLED {
 
 uint32_t CHmask[D_NLS] = {   // Channel mask
   //DDLLLLLLLLLLLLLLLL     binary for driver (bits 17+) and LED mask (bits 1-16) this means that one LED must be connected to a single TLC, which is electrically sensible
-  0b100000000000000001, // ZeroOrder              
-  0b001110000000000000, // LED  1    3 ch   xxx
-  0b000001111110000000, // LED  2    6 ch   xxxxxx
-  0b000000000001100000, // LED  3    2 ch   xx
-  0b000000000000010000, // LED  4    1 ch   x
-  0b000000000000001000, // LED  5    1 ch   x
-  0b000000000000000100, // LED  6    1 ch   x
-  0b000000000000000010, // LED  7    1 ch   x
-  0b000000000000000001, // LED  8    1 ch   x
-  0b011000000000000000, // LED  9    1 ch   x
-  0b010100000000000000, // LED 10    1 ch   x
-  0b010011110000000000, // LED 11    4 ch   xxxx
-  0b010000001111000000, // LED 12    4 ch   xxxx
-  0b010000000000111110, // LED 13    5 ch   xxxxx
-  0b101100000000000000, // LED 14    2 ch   xx
-  0b100011000000000000, // LED 15    2 ch   xx
-  0b100000000010000000, // LED 16    1 ch   x
-  0b100000010000000000, // LED 17    1 ch   x
-  0b100000001000000000, // LED 18    1 ch   x
-  0b100000000100000000  // LED 19    1 ch   x
+  0b000000000000000001, // ZeroOrder              
+  0b000000000000000001, // Ch 0
+  0b000000000000000010, // Ch 1
+  0b000000000000000100, // Ch 2
+  0b000000000000001000, // Ch 3
+  0b000000000000010000, // Ch 4
+  0b000000000000100000, // Ch 5
+  0b000000000001000000, // Ch 6
+  0b000000000010000000, // Ch 7
+  0b000000000100000000, // Ch 8
+  0b000000001000000000, // Ch 9
+  0b000000010000000000, // Ch 10
+  0b000000100000000000, // Ch 11
+  0b000001000000000000, // Ch 12
+  0b000010000000000000, // Ch 13
+  0b000100000000000000, // Ch 14
+  0b001000000000000000  // Ch 15
 };
 
 float    LogIn [N_PWL][D_NLS]  = { 0 } ;  // placeholder for desired logI values if PWL interpolation is used
@@ -81,11 +74,11 @@ int      isoLogCurr = 0; // which line of isoLog to read values from
 
 // QUESTION: is this actually used by protocols?
 
-// Led reference Index         ZO,     1      2      3      4      5      6      7      8      9     10     11     12     13     14     15     16     17     18     19 // LED mapping
-uint16_t lambdas[D_NLS]   = { 999,   363,   372,   385,   405,   422,   435,   453,   475,   491,   517,   538,   557,   573,   589,   613,   630,   659,   669,   679};
-int         mask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for stimulation
-int     adapMask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for adaptation
-uint8_t    isoDC[D_NLS] =  {  127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127}; 
-uint8_t  isoBC[D_nTLCs] =  {  127,   127,   127} ;
+// Led reference Index         ZO,     1      2      3      4      5      6      7      8      9     10     11     12     13     14     15     16 // LED mapping
+uint16_t lambdas[D_NLS]   = { 999,   800,   801,   802,   803,   804,   805,   806,   807,   808,   809,   810,   811,   812,   813,   814,   815}; // nm
+int         mask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for stimulation
+int     adapMask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for adaptation
+uint8_t    isoDC[D_NLS] =  {  127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127}; 
+uint8_t  isoBC[D_nTLCs] =  {  127 } ;
 #define MAX_ATT_VALUE         6 // minimal allowed attenuation value. Where int(MAX_PWM*MIN_ATT_VALUE) equals zero.
 #define OFF_LOG_VALUE         9 // the log values to get the LED to turn off, irrespectible of number of channels

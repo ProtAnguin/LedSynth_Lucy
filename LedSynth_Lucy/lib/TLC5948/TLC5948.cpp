@@ -36,7 +36,7 @@ TLC5948::TLC5948(int nTLCs_in,int nLEDs_in,  uint32_t maskKey[],  int GS_PIN, in
 }
 
 void TLC5948::begin() {
-  SPI.begin();
+  // SPI.begin();
   
   pinMode(_LAT_PIN, OUTPUT);
   digitalWrite(_LAT_PIN, LOW);

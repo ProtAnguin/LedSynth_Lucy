@@ -58,6 +58,7 @@ NOTE: USING '!' for update
 #include <TLC5948.h>
 #include "SparkFun_OPT4048.h"
 #include <Wire.h>
+#include <SPI.h>
 
 #include "Lucy.h"
 #include "easter.h"
@@ -67,7 +68,7 @@ NOTE: USING '!' for update
 String input = "help";   //used for storing incoming strings, set to <prot> to go into ProtocolBuilder on startup
 String command = ""; // used to store the command that the user sends via Serial port (empty at Init)
 char delimiter = '*' ;
-TLC5948 tlc(D_nTLCs, D_NLS, CHmask);
+TLC5948 tlc(D_nTLCs, D_NLS, CHmask, 6);
 
 SparkFun_OPT4048 opt;
 
@@ -197,6 +198,11 @@ void setup() {
 
   Serial.begin(SERIAL_BAUD_RATE);
   Serial.setTimeout(SERIAL_TIMEOUT);
+  
+  //SPI.setSCK(27);      // must be called *before* SPI.begin()
+  //SPI.setMOSI(11);     // can keep default, or change if needed
+  //SPI.setMISO(12);     // same here
+  SPI.begin();
   tlc.begin();                            
   Wire.begin();
 
@@ -271,6 +277,8 @@ void loop() {
     else if (input.substring(0, 3) == "tic")          delay(7) ;     // this is about 1 frame at 150 Hz, TODO should not be hard-coded
     else if (input.substring(0, 3) == "toc")          delay(40);     // this is about 6 frames at 150 Hz, TODO should not be hard-coded
     else if (input.substring(0, 3) == "del")          delay(constrain(input.substring(3).toInt(),0,1000));
+
+    else if (input.substring(0, 3) == "cpu")       {  Serial.printf("Current CPU Speed: %lu MHz\n", F_CPU / 1000000); }
     
     else if (input.substring(0, 4) == "trig")         trigOut(TRIGOUTPIN,1); // trigger out for 1 ms
 
