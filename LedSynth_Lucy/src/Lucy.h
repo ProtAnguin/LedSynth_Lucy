@@ -2,6 +2,7 @@
 // TODO: write up an user manual 
 // TODO: search for <TODO:> and take care of any
 // TODO: make a command for reporting all settings
+// TODO: empty todo, just to make a new commit and learn syncing
 
 #define LEDSYNTHNAME          "Lucy"
 
