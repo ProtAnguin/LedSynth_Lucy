@@ -67,7 +67,7 @@ NOTE: USING '!' for update
 String input = "help";   //used for storing incoming strings, set to <prot> to go into ProtocolBuilder on startup
 String command = ""; // used to store the command that the user sends via Serial port (empty at Init)
 char delimiter = '*' ;
-TLC5948 tlc(D_nTLCs, D_NLS, CHmask);
+TLC5948 tlc(D_nTLCs, D_NLS, CHmask, 6);
 
 SparkFun_OPT4048 opt;
 
