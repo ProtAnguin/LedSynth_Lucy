@@ -6,7 +6,7 @@
 
 #define LEDSYNTHNAME          "Lucy"
 
-#define D_nTLCs               5
+#define D_nTLCs               1
 #define D_NLS                 11                                    // rainbow LEDs and zero order
 #define N_PWL                 4
 #define N_ISOBANKS            10
@@ -70,6 +70,6 @@ uint16_t lambdas[D_NLS]   = { 999,   363,   372,   385,   405,   422,   435,   4
 int         mask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for stimulation
 int     adapMask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for adaptation
 uint8_t    isoDC[D_NLS] =  {  127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127}; 
-uint8_t  isoBC[D_nTLCs] =  {  127,   127,   127,   127,   127} ;
+uint8_t  isoBC[D_nTLCs] =  {  127 } ;
 #define MAX_ATT_VALUE         6 // minimal allowed attenuation value. Where int(MAX_PWM*MIN_ATT_VALUE) equals zero.
 #define OFF_LOG_VALUE         9 // the log values to get the LED to turn off, irrespectible of number of channels
