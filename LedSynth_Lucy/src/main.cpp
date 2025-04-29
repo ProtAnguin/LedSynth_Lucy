@@ -59,7 +59,9 @@ NOTE: USING '!' for update
 #include "SparkFun_OPT4048.h"
 #include <Wire.h>
 
-#include "Lucy.h"
+//#include "Lucy.h"
+//#include "Maxim.h"
+#include "Maxim5.h"
 #include "easter.h"
 #include "storeDataToEEPROM.h"
 
@@ -181,11 +183,6 @@ void mainPrintLeds() {
 // PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS PROTOCOLS
 #include "protocol.h"                                   // TODO this is a part of protocol, consider making an object / library for the protocol builder
 
-// CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB
-// CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB
-// CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB CALIB
-#include "calib.h"
-
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
 // SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP SETUP
@@ -230,7 +227,6 @@ void loop() {
     else if (input.substring(0, 4) == "help")          mainHelp();
     else if (input.substring(0, 4) == "leds")          mainPrintLeds();
     else if (input.substring(0, 4) == "prot")          protocolEnvironment();
-    else if (input.substring(0, 6) == "calib")         calibEnvironment();
     else if (input.substring(0, 7) == "version")       plotEaster(TextSignature, 1, TextSignature_h, TextSignature_w);       
     else if (input.substring(0, 6) == "sensei")        plotEaster(easter, 1, easter_h, easter_w);
     else if (input.substring(0, 6) == "debug1")        tlc.debugTLCflag = !tlc.debugTLCflag;

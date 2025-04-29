@@ -4,7 +4,7 @@
 // TODO: make a command for reporting all settings
 // TODO: empty todo, just to make a new commit and learn syncing
 
-#define LEDSYNTHNAME          "Lucy"
+#define LEDSYNTHNAME          "Maxim"
 
 #define D_nTLCs               5
 #define D_NLS                 11                                    // rainbow LEDs and zero order
@@ -44,7 +44,7 @@ struct selectedLED {
 } LED;
 
 uint32_t CHmask[D_NLS] = {   // Channel mask
-  //DDLLLLLLLLLLLLLLLL     binary for driver (bits 17+) and LED mask (bits 1-16) this means that one LED must be connected to a single TLC, which is electrically sensible
+  //DDDLLLLLLLLLLLLLLLL     binary for driver (bits 17+) and LED mask (bits 1-16) this means that one LED must be connected to a single TLC, which is electrically sensible
   0b0000000000000000000, // ZeroOrder              
   0b0000000000011111111, // LED  1
   0b0001111111100000000, // LED  2
@@ -55,7 +55,7 @@ uint32_t CHmask[D_NLS] = {   // Channel mask
   0b0110000000011111111, // LED  7
   0b0111111111100000000, // LED  8
   0b1000000000011111111, // LED  9
-  0b1001111111100000000, // LED 10
+  0b1001111111100000000  // LED  10
 };
 
 float    LogIn [N_PWL][D_NLS]  = { 0 } ;  // placeholder for desired logI values if PWL interpolation is used
@@ -65,8 +65,8 @@ int      isoLogCurr = 0; // which line of isoLog to read values from
 
 // QUESTION: is this actually used by protocols?
 
-// Led reference Index         ZO,     1      2      3      4      5      6      7      8      9     10     11     12     13     14     15     16     17     18     19 // LED mapping
-uint16_t lambdas[D_NLS]   = { 999,   363,   372,   385,   405,   422,   435,   453,   475,   491,   517};
+// Led reference Index         ZO,     1      2      3      4      5      6      7      8      9     10    // LED mapping
+uint16_t lambdas[D_NLS]   = { 999,   801,   802,   803,   804,   805,   806,   807,   808,   809,   810};  // nm
 int         mask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for stimulation
 int     adapMask[D_NLS] =  {    1,     1,     1,     1,     1,     1,     1,     1,     1,     1,     1};  // Mask for adaptation
 uint8_t    isoDC[D_NLS] =  {  127,   127,   127,   127,   127,   127,   127,   127,   127,   127,   127}; 
