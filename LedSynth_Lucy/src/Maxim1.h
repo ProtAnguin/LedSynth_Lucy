@@ -1,10 +1,8 @@
 // TODO: label the BNC pins on the front plate
-// TODO: write up an user manual 
-// TODO: search for <TODO:> and take care of any
-// TODO: make a command for reporting all settings
-// TODO: empty todo, just to make a new commit and learn syncing
+// TODO: make a command for reporting all settings of TLC
+// TODO: add Fast module, to lead or follow with BNC triggers (for Adam) using micros() instead of millis()
 
-#define LEDSYNTHNAME          "Maxim"
+#define LEDSYNTHNAME          "Maxim1"
 
 #define D_nTLCs               1
 #define D_NLS                 17                                    // rainbow LEDs and zero order
@@ -27,7 +25,6 @@
 #define RESTART_ADDR 0xE000ED0C
 #define READ_RESTART() (*(volatile uint32_t *)RESTART_ADDR)
 #define WRITE_RESTART(val) ((*(volatile uint32_t *)RESTART_ADDR) = (val))
-
 
 struct selectedLED {
   int8_t   curr    = 0;           // 

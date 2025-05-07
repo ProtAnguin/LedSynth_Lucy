@@ -4,7 +4,7 @@
 // TODO: make a command for reporting all settings
 // TODO: empty todo, just to make a new commit and learn syncing
 
-#define LEDSYNTHNAME          "Maxim"
+#define LEDSYNTHNAME          "Maxim5"
 
 #define D_nTLCs               5
 #define D_NLS                 11                                    // rainbow LEDs and zero order

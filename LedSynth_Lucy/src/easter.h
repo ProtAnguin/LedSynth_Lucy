@@ -4,6 +4,7 @@ String TextHelp =
 "- COMMANDS -----------------------------------------------------------------------------------------------------------\n"
 "  help     print this again\n"
 "  prot     enter Protocol builder\n" 
+"  chase    enter Chase builder\n"
 "  reset    reset the device\n"
 "  welc     welcome screen\n"
 "- TLC internals ------------------------------------------------------------------------------------------------------\n"
