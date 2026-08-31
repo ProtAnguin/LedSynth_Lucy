@@ -60,9 +60,9 @@ NOTE: USING '!' for update
 #include <Wire.h>
 
 //#include "Lucy.h"
-#include "Maxim1.h"
+//#include "Maxim1.h"
 //#include "Maxim5.h"
-//#include "Maxim15.h"
+#include "Maxim15.h"
 #include "easter.h"
 #include "storeDataToEEPROM.h"
 
